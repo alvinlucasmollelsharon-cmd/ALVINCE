@@ -13,6 +13,7 @@ const PORT = Number(process.env.PORT || 3000);
 const MAX_JSON_BYTES = 24 * 1024;
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
 const rateBuckets = new Map();
+const typingSignals = new Map();
 const safeEqualText = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && (awaitlessTimingSafeEqual(a, b));
 function awaitlessTimingSafeEqual(a, b) {
   // Values are public-token-length or user-supplied token text; equal lengths are checked before the constant-time comparison.
@@ -282,6 +283,19 @@ async function handleApi(req, res, url, session) {
       WHERE f.user_low = ? OR f.user_high = ? ORDER BY COALESCE(lastMessageAt, u.username) DESC`).all(user.id, user.id, user.id, user.id, user.id, user.id, user.id, user.id);
     json(res, 200, { friends: friends.map((f) => ({ ...f, avatarUrl: f.avatar_name ? `/media/${encodeURIComponent(f.avatar_name)}` : null, unread: Number(f.unread) })) }); return;
   }
+  const typingConversationId = patternPath(path, /^\/api\/messages\/([^/]+)\/typing$/);
+  if (typingConversationId && method === 'POST') {
+    validateSameOrigin(req); requireCsrf(session, req); const user = requireUser(session);
+    limited(req, 'message-typing', 300, 60 * 1000);
+    if (!areFriends(user.id, typingConversationId)) throw fail(403, 'You can message people after you become friends.');
+    const input = await readJson(req, 2048);
+    const key = `${user.id}:${typingConversationId}`;
+    const now = Date.now();
+    for (const [signalKey, expiresAt] of typingSignals) if (expiresAt <= now) typingSignals.delete(signalKey);
+    if (input.active === true) typingSignals.set(key, now + 5000);
+    else typingSignals.delete(key);
+    json(res, 200, { typing: input.active === true }); return;
+  }
   const conversationId = patternPath(path, /^\/api\/messages\/([^/]+)$/);
   if (conversationId && method === 'GET') {
     const user = requireUser(session);
@@ -291,7 +305,10 @@ async function handleApi(req, res, url, session) {
       FROM messages m JOIN users u ON u.id = m.sender_id WHERE (m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?) ORDER BY m.created_at DESC LIMIT 200`).all(user.id, conversationId, conversationId, user.id).reverse();
     const friend = db.prepare('SELECT id, username, bio, avatar_name FROM users WHERE id = ? AND disabled = 0').get(conversationId);
     if (!friend) throw fail(404, 'That person could not be found.');
-    json(res, 200, { friend: { id: friend.id, username: friend.username, bio: friend.bio, avatarUrl: friend.avatar_name ? `/media/${encodeURIComponent(friend.avatar_name)}` : null }, messages }); return;
+    const typingKey = `${conversationId}:${user.id}`;
+    const typingExpiresAt = typingSignals.get(typingKey) || 0;
+    if (typingExpiresAt <= Date.now()) typingSignals.delete(typingKey);
+    json(res, 200, { friend: { id: friend.id, username: friend.username, bio: friend.bio, avatarUrl: friend.avatar_name ? `/media/${encodeURIComponent(friend.avatar_name)}` : null }, messages, typing: typingExpiresAt > Date.now() }); return;
   }
   if (conversationId && method === 'POST') {
     validateSameOrigin(req); requireCsrf(session, req); const user = requireUser(session);
@@ -301,6 +318,7 @@ async function handleApi(req, res, url, session) {
     const input = await readJson(req); const text = requireText(input.text, 'Message', 2000);
     const id = newId(); const createdAt = new Date().toISOString();
     db.prepare('INSERT INTO messages (id, sender_id, recipient_id, text, created_at) VALUES (?, ?, ?, ?, ?)').run(id, user.id, friend.id, text, createdAt);
+    typingSignals.delete(`${user.id}:${friend.id}`);
     json(res, 201, { message: { id, senderId: user.id, recipientId: friend.id, text, createdAt, username: user.username } }); return;
   }
 
