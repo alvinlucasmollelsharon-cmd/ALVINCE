@@ -51,6 +51,12 @@ Choose a password of at least 10 characters. The command creates the first admin
 
 The admin dashboard is only shown to admins. It can pause or restore member accounts and remove posts (including their media and comments). Admins can remove comments in the feed as well.
 
+## Deploy ALVINCE with one click
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/alvinlucasmollelsharon-cmd/ALVINCE)
+
+This creates a fresh hosted copy with persistent storage for accounts, posts, chats, and uploads. Render will ask you to sign in and review the hosting cost before you approve deployment. Your public app link appears after deployment finishes.
+
 ## Deploy with Docker
 
 Build the image from this folder and mount a persistent volume at `/data`:
