@@ -1,5 +1,10 @@
 const app = document.querySelector('#app');
 const toastRegion = document.querySelector('#toast-region');
+let messageSyncTimer = null;
+let messageSyncInFlight = false;
+let messageSyncEpoch = 0;
+let typingStopTimer = null;
+let lastTypingPingAt = 0;
 
 const icons = {
   home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
@@ -251,9 +256,17 @@ function friendsView() {
     <section class="panel community-panel"><div class="community-panel-head"><h2>Friends</h2><span class="rail-muted">${state.friends.length}</span></div>${state.friends.length ? state.friends.map((person) => `<div class="community-row">${avatar(person)}<div class="community-row-copy"><button class="post-author-name" data-action="open-profile" data-username="${esc(person.username)}">${esc(person.username)}</button><p class="community-muted">${person.lastMessage ? esc(person.lastMessage) : 'You’re friends on ALVINCE'}</p></div><button class="btn btn-small" data-action="open-chat" data-id="${esc(person.id)}">${ico('messages')} Message</button></div>`).join('') : '<div class="empty-state"><span class="empty-icon">✦</span><h2 class="empty-title">Your circle starts here.</h2><p class="empty-copy">Find someone in search and send a friend request. Once they accept, you can chat.</p><button class="btn btn-small" data-action="focus-search">Find people</button></div>'}</section>`;
 }
 
+function chatFriendsListContent() {
+  return `<div class="community-panel-head"><h2>Chats</h2></div>${state.messageFriends.length ? state.messageFriends.map((friend) => `<button class="chat-friend ${state.conversation?.friend.id === friend.friendId ? 'active' : ''}" data-action="open-chat" data-id="${esc(friend.friendId)}">${avatar(friend)}<span class="chat-friend-copy"><b>${esc(friend.username)}</b><small>${esc(friend.lastMessage || 'Start a conversation')}</small></span>${friend.unread ? `<span class="chat-unread">${friend.unread}</span>` : ''}</button>`).join('') : '<p class="chat-empty-list">Add a friend to start chatting.</p>'}`;
+}
+
+function chatMessagesContent(messages) {
+  return messages.length ? messages.map((message) => `<div class="chat-message ${message.senderId === state.user.id ? 'mine' : ''}"><p>${esc(message.text)}</p><time>${esc(ago(message.createdAt))}</time></div>`).join('') : '<div class="chat-first">Say hello to start the conversation.</div>';
+}
+
 function messagesView() {
   const active = state.conversation;
-  return `<div class="section-heading"><div><h1>Messages</h1><p>Your conversations are saved so you can come back to them.</p></div></div><div class="messages-layout"><aside class="panel chat-friends"><div class="community-panel-head"><h2>Chats</h2></div>${state.messageFriends.length ? state.messageFriends.map((friend) => `<button class="chat-friend ${active?.friend.id === friend.friendId ? 'active' : ''}" data-action="open-chat" data-id="${esc(friend.friendId)}">${avatar(friend)}<span class="chat-friend-copy"><b>${esc(friend.username)}</b><small>${esc(friend.lastMessage || 'Start a conversation')}</small></span>${friend.unread ? `<span class="chat-unread">${friend.unread}</span>` : ''}</button>`).join('') : '<p class="chat-empty-list">Add a friend to start chatting.</p>'}</aside><section class="panel chat-panel">${active ? `<header class="chat-head">${avatar(active.friend)}<div><button class="post-author-name" data-action="open-profile" data-username="${esc(active.friend.username)}">${esc(active.friend.username)}</button><p class="community-muted">Friend conversation</p></div></header><div class="chat-messages" data-chat-messages>${active.messages.length ? active.messages.map((message) => `<div class="chat-message ${message.senderId === state.user.id ? 'mine' : ''}"><p>${esc(message.text)}</p><time>${esc(ago(message.createdAt))}</time></div>`).join('') : '<div class="chat-first">Say hello to start the conversation.</div>'}</div><form class="chat-compose" data-form="message"><input name="text" maxlength="2000" placeholder="Write a message…" aria-label="Write a message" required><button class="btn" type="submit" aria-label="Send message">${ico('send')}</button></form>` : `<div class="chat-welcome"><span class="empty-icon">${ico('messages')}</span><h2 class="empty-title">Your messages</h2><p class="empty-copy">Choose a friend to open your conversation.</p></div>`}</section></div>`;
+  return `<div class="messages-page ${active ? 'has-conversation' : ''}"><div class="section-heading messages-heading"><div><h1>Messages</h1><p>Your conversations are saved so you can come back to them.</p></div></div><div class="messages-layout ${active ? 'has-conversation' : ''}"><aside class="panel chat-friends">${chatFriendsListContent()}</aside><section class="panel chat-panel">${active ? `<header class="chat-head"><button class="chat-back" type="button" data-action="messages-back" aria-label="Back to chats">${ico('arrow')}</button>${avatar(active.friend)}<div class="chat-head-copy"><button class="post-author-name" data-action="open-profile" data-username="${esc(active.friend.username)}">${esc(active.friend.username)}</button><p class="community-muted">Friend conversation</p></div></header><div class="chat-messages" data-chat-messages>${chatMessagesContent(active.messages)}</div><div class="chat-typing" data-chat-typing role="status" aria-live="polite" ${active.typing ? '' : 'hidden'}><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${esc(active.friend.username)} is typing</span></div><form class="chat-compose" data-form="message"><input name="text" maxlength="2000" placeholder="Write a message…" aria-label="Write a message" required autocomplete="off"><button class="btn" type="submit" aria-label="Send message">${ico('send')}</button></form>` : `<div class="chat-welcome"><span class="empty-icon">${ico('messages')}</span><h2 class="empty-title">Your messages</h2><p class="empty-copy">Choose a friend to open your conversation.</p></div>`}</section></div></div>`;
 }
 
 function storyComposerModal() {
@@ -337,6 +350,8 @@ function render() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', state.theme === 'dark' ? '#14121b' : '#f8f6fb');
   const main = state.page === 'profile' ? profileView() : state.page === 'admin' ? adminView() : state.page === 'friends' ? friendsView() : state.page === 'messages' ? messagesView() : feedView();
   app.innerHTML = `${desktopSidebar()}<main class="main-area">${topbar()}<div class="page-content"><div class="feed-layout"><section class="feed-column">${main}</section>${rightRail()}</div></div></main>${mobileNav()}${modalHtml()}`;
+  if (state.page === 'messages' && state.user) startMessageSync();
+  else stopMessageSync();
 }
 
 function notify(message, error = false) {
@@ -388,6 +403,53 @@ async function refreshCommunityData() {
   } catch { /* Keep the rest of the signed-in space usable if community data is unavailable. */ }
 }
 
+function startMessageSync() {
+  if (!messageSyncTimer) messageSyncTimer = window.setInterval(syncMessagePage, 1800);
+}
+
+function stopMessageSync() {
+  if (messageSyncTimer) window.clearInterval(messageSyncTimer);
+  messageSyncTimer = null;
+}
+
+async function syncMessagePage() {
+  if (!state.user || state.page !== 'messages' || document.hidden || messageSyncInFlight) return;
+  const friendId = state.activeConversationId;
+  if (friendId && !state.conversation) return;
+  const epoch = messageSyncEpoch;
+  messageSyncInFlight = true;
+  try {
+    const [overview, chat] = await Promise.all([
+      api('/api/messages'),
+      friendId ? api(`/api/messages/${encodeURIComponent(friendId)}`) : Promise.resolve(null),
+    ]);
+    if (epoch !== messageSyncEpoch || state.page !== 'messages' || state.activeConversationId !== friendId) return;
+    state.messageFriends = overview.friends;
+    if (chat) {
+      const previousMessages = state.conversation?.messages || [];
+      const previousLastId = previousMessages.at(-1)?.id;
+      const nextLastId = chat.messages.at(-1)?.id;
+      const thread = app.querySelector('[data-chat-messages]');
+      const nearBottom = !thread || thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+      const messagesChanged = previousMessages.length !== chat.messages.length || previousLastId !== nextLastId;
+      state.conversation = { friend: chat.friend, messages: chat.messages, typing: chat.typing };
+      if (thread && messagesChanged) {
+        thread.innerHTML = chatMessagesContent(chat.messages);
+        if (nearBottom || previousLastId !== nextLastId) thread.scrollTop = thread.scrollHeight;
+      }
+      const typing = app.querySelector('[data-chat-typing]');
+      if (typing) typing.hidden = !chat.typing;
+    }
+    const friendsList = app.querySelector('.chat-friends');
+    if (friendsList) {
+      const scrollTop = friendsList.scrollTop;
+      friendsList.innerHTML = chatFriendsListContent();
+      friendsList.scrollTop = scrollTop;
+    }
+  } catch { /* Chat stays usable during a brief network interruption; the next poll retries. */ }
+  finally { messageSyncInFlight = false; }
+}
+
 async function loadFriends({ push = true } = {}) {
   if (!state.user) { openAuth('login'); return; }
   if (push) setRoute({ page: 'friends' });
@@ -398,18 +460,45 @@ async function loadFriends({ push = true } = {}) {
 
 async function loadMessages(friendId = null, { push = true } = {}) {
   if (!state.user) { openAuth('login'); return; }
+  if (state.activeConversationId && state.activeConversationId !== friendId) stopTyping(state.activeConversationId);
+  if (state.activeConversationId !== friendId) { clearTimeout(typingStopTimer); typingStopTimer = null; lastTypingPingAt = 0; }
+  messageSyncEpoch += 1;
   if (push) setRoute({ page: 'messages' });
   state.page = 'messages'; state.activeConversationId = friendId || null; state.conversation = null; state.searchOpen = false; render();
   try {
     const result = await api('/api/messages'); state.messageFriends = result.friends;
     if (friendId) {
       const chat = await api(`/api/messages/${encodeURIComponent(friendId)}`);
-      state.conversation = { friend: chat.friend, messages: chat.messages };
+      state.conversation = { friend: chat.friend, messages: chat.messages, typing: chat.typing };
       await refreshCommunityData();
     }
     render();
     const area = app.querySelector('[data-chat-messages]'); if (area) area.scrollTop = area.scrollHeight;
   } catch (error) { notify(error.message, true); }
+}
+
+async function sendTypingSignal(friendId, active) {
+  if (!friendId || !state.user) return;
+  try { await api(`/api/messages/${encodeURIComponent(friendId)}/typing`, { method: 'POST', json: { active } }); }
+  catch { /* Typing presence is temporary and should never block chat. */ }
+}
+
+function stopTyping(friendId = state.activeConversationId) {
+  clearTimeout(typingStopTimer); typingStopTimer = null; lastTypingPingAt = 0;
+  if (friendId) void sendTypingSignal(friendId, false);
+}
+
+function noteTyping(input) {
+  const friendId = state.activeConversationId;
+  if (!state.user || !friendId) return;
+  clearTimeout(typingStopTimer);
+  if (!input.value.trim()) { stopTyping(friendId); return; }
+  const now = Date.now();
+  if (now - lastTypingPingAt >= 950) {
+    lastTypingPingAt = now;
+    void sendTypingSignal(friendId, true);
+  }
+  typingStopTimer = window.setTimeout(() => stopTyping(friendId), 1700);
 }
 
 async function refreshProfile() {
@@ -447,6 +536,7 @@ async function handleFriendAction(action, id) {
 async function submitMessage(form) {
   const text = form.elements.text.value.trim(); if (!text || !state.activeConversationId) return;
   const button = form.querySelector('button[type="submit"]'); button.disabled = true;
+  stopTyping(state.activeConversationId);
   try {
     await api(`/api/messages/${encodeURIComponent(state.activeConversationId)}`, { method: 'POST', json: { text } });
     await loadMessages(state.activeConversationId, { push: false });
@@ -510,6 +600,7 @@ function navigateAction(action, target) {
     case 'feed-nav': goFeed(target.dataset.type); break;
     case 'friends': loadFriends(); break;
     case 'messages': loadMessages(); break;
+    case 'messages-back': loadMessages(null, { push: false }); break;
     case 'open-chat': loadMessages(target.dataset.id); break;
     case 'profile-me': if (state.user) loadProfile(state.user.username); else openAuth('login'); break;
     case 'open-profile': loadProfile(target.dataset.username); break;
@@ -687,6 +778,11 @@ function updateSearchPopover() {
 
 app.addEventListener('input', (event) => {
   if (event.target.id === 'global-search') search(event.target.value);
+  if (event.target.matches('.chat-compose input')) noteTyping(event.target);
+});
+
+app.addEventListener('focusout', (event) => {
+  if (event.target.matches('.chat-compose input')) stopTyping();
 });
 
 app.addEventListener('focusin', (event) => {
@@ -777,6 +873,10 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault(); const searchInput = app.querySelector('#global-search'); searchInput?.focus();
   }
   if (event.key === 'Escape' && state.modal) { resetCompose(); render(); }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.page === 'messages') void syncMessagePage();
 });
 
 window.addEventListener('popstate', async () => {
