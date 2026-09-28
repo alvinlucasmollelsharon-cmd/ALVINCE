@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: alvince
+    runtime: docker
+    plan: free
+    autoDeployTrigger: off
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"

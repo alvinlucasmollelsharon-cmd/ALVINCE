@@ -1,0 +1,14 @@
+{
+  "name": "alvince",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ALVINCE — a space for videos, pictures and ideas.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "admin": "node --env-file-if-exists=.env scripts/create-admin.js"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}
