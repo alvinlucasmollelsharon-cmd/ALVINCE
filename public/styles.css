@@ -162,9 +162,9 @@ a { color: inherit; }
 .comment-submit svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .comment-signin { margin: 0; color: var(--muted); font-size: 10px; }
 .comment-signin button { border: 0; padding: 0; background: transparent; color: var(--accent-text); font-weight: 700; cursor: pointer; }
-.avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 13px; background: #eee9fa; color: #604aa0; font: 700 12px Manrope, sans-serif; text-transform: uppercase; }
-.avatar-sm { width: 27px; height: 27px; border-radius: 9px; font-size: 9px; }
-.avatar-lg { width: 64px; height: 64px; border-radius: 22px; font-size: 21px; }
+.avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; background: #eee9fa; color: #604aa0; font: 700 12px Manrope, sans-serif; text-transform: uppercase; }
+.avatar-sm { width: 27px; height: 27px; border-radius: 50%; font-size: 9px; }
+.avatar-lg { width: 64px; height: 64px; border-radius: 50%; font-size: 21px; }
 .avatar-admin { background: #eceaff; color: #5b58a1; }
 
 .right-rail { display: grid; gap: 15px; }
@@ -204,7 +204,7 @@ a { color: inherit; }
 .profile-cover { position: relative; display: flex; align-items: flex-end; min-height: 120px; overflow: visible; margin-bottom: 48px; padding: 17px; border-radius: 18px; background: radial-gradient(ellipse at 85% 10%, rgb(191 166 255 / 30%), transparent 34%), linear-gradient(128deg, #261d36, #46315b 65%, #77548c); }
 .profile-cover::after { position: absolute; top: -32px; right: 70px; width: 166px; height: 166px; border: 1px solid rgb(221 202 255 / 27%); border-radius: 50%; box-shadow: 0 0 0 22px rgb(221 202 255 / 5%); content: ''; }
 .profile-summary { position: absolute; bottom: -42px; left: 22px; display: flex; align-items: flex-end; gap: 12px; }
-.profile-summary .avatar { width: 68px; height: 68px; border: 4px solid var(--surface); border-radius: 22px; }
+.profile-summary .avatar { width: 68px; height: 68px; border: 4px solid var(--surface); border-radius: 50%; }
 .profile-name-block { padding-bottom: 3px; }
 .profile-name-block h1 { margin: 0; font: 700 18px Manrope, sans-serif; }
 .profile-name-block p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
@@ -526,7 +526,7 @@ a { color: inherit; }
   .post-detail-body { padding-inline: 12px; }
   .post-detail-body .post-media { max-height: 43vh; }
   .profile-summary { left: 14px; gap: 9px; }
-  .profile-summary .avatar { width: 58px; height: 58px; border-radius: 18px; }
+  .profile-summary .avatar { width: 58px; height: 58px; border-radius: 50%; }
   .profile-name-block h1 { font-size: 15px; }
   .modal-backdrop { align-items: end; padding: 0; }
   .modal { width: 100%; max-height: 90dvh; border-radius: 21px 21px 0 0; padding-bottom: env(safe-area-inset-bottom); }
