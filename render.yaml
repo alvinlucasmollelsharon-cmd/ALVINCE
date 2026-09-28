@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: alvince
+    runtime: docker
+    plan: starter
+    autoDeployTrigger: off
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DATABASE_PATH
+        value: /data/alvince.sqlite
+      - key: UPLOAD_DIR
+        value: /data/uploads
+    disk:
+      name: alvince-data
+      mountPath: /data
+      sizeGB: 1
