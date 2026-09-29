@@ -1091,3 +1091,18 @@ alvinceIntroView = function () {
   return alvinceIntroViewBeforeRememberFix().replace('id="intro-remember-user" type="checkbox"', 'id="intro-remember-user" name="rememberUsername" type="checkbox"');
 };
 render();
+
+
+const alvinceIntroViewBeforePasswordVisibility = alvinceIntroView;
+alvinceIntroView = function () {
+  return alvinceIntroViewBeforePasswordVisibility().replace(
+    /(<div class="field"><label for="intro-password">Password<\/label><input id="intro-password" type="password"[^>]*><\/div>)/,
+    '$1<label class="intro-remember"><input id="intro-show-password" type="checkbox" aria-controls="intro-password"><span>Show password</span></label>'
+  );
+};
+app.addEventListener('change', (event) => {
+  if (event.target.id !== 'intro-show-password') return;
+  const password = app.querySelector('#intro-password');
+  if (password) password.type = event.target.checked ? 'text' : 'password';
+});
+render();
