@@ -691,3 +691,81 @@ html, body { height: 100%; overflow: hidden; }
   .toast-region { top: max(10px, env(safe-area-inset-top)); right: 10px; bottom: auto; left: 10px; width: auto; justify-items: center; }
   .toast { max-width: 100%; font-size: 11px; }
 }
+
+
+/* ALVINCE welcome screen and consistent profile portrait preview. */
+.intro-screen { position: relative; display: flex; min-height: 100dvh; align-items: center; justify-content: center; overflow-x: hidden; overflow-y: auto; padding: 34px 24px; isolation: isolate; background: radial-gradient(ellipse at 12% 14%, rgb(214 202 255 / 48%), transparent 34%), radial-gradient(ellipse at 89% 83%, rgb(186 237 204 / 42%), transparent 34%), linear-gradient(145deg, #faf8ff, #f5faf6 55%, #fff9fb); }
+.intro-shell { position: relative; display: grid; width: min(1080px, 100%); grid-template-columns: minmax(0, 1.1fr) minmax(340px, .82fr); align-items: center; gap: clamp(28px, 6vw, 78px); padding: clamp(30px, 5vw, 62px); border: 1px solid rgb(255 255 255 / 78%); border-radius: 34px; background: rgb(255 255 255 / 66%); box-shadow: 0 28px 90px rgb(51 39 74 / 12%), inset 0 1px 0 rgb(255 255 255 / 92%); backdrop-filter: blur(25px) saturate(145%); -webkit-backdrop-filter: blur(25px) saturate(145%); animation: intro-enter .85s cubic-bezier(.18,.78,.23,1) both; }
+.intro-story { position: relative; z-index: 1; padding: 7px 0; animation: intro-copy-enter .9s .08s both; }
+.intro-brand { display: inline-flex; align-items: center; gap: 11px; margin-bottom: clamp(42px, 8vh, 84px); color: #302746; font: 800 13px Manrope, sans-serif; letter-spacing: .17em; }
+.intro-logo-mark { position: relative; display: grid; width: 43px; height: 43px; place-items: center; border: 1px solid rgb(255 255 255 / 65%); border-radius: 15px; background: linear-gradient(145deg, #a78af5, #7855e4 66%, #6949cf); color: #fff; font: 800 25px/1 Manrope, sans-serif; box-shadow: 0 8px 19px rgb(104 75 191 / 23%), inset 0 1px 1px rgb(255 255 255 / 62%); animation: intro-mark-float 4.2s ease-in-out infinite; }
+.intro-logo-mark::after { position: absolute; top: 7px; right: 7px; width: 5px; height: 5px; border-radius: 50%; background: #b9f0c0; content: ''; }
+.intro-eyebrow, .intro-kicker { margin: 0 0 12px; color: #6e57b1; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.intro-story h1 { max-width: 620px; margin: 0; color: #282137; font: 800 clamp(42px, 5.6vw, 72px)/.99 Manrope, 'Segoe UI', sans-serif; letter-spacing: -.075em; }
+.intro-story h1 span { display: inline-block; padding-bottom: 7px; background: linear-gradient(105deg, #7754df 5%, #a05bd3 52%, #3c9a67 100%); background-clip: text; color: transparent; -webkit-background-clip: text; animation: intro-title-enter .95s .22s both; }
+.intro-copy { max-width: 390px; margin: 22px 0 0; color: #756d83; font-size: 14px; line-height: 1.75; }
+.intro-decoration { display: flex; align-items: center; gap: 9px; margin-top: 42px; }
+.intro-dot { width: 7px; height: 7px; border-radius: 50%; background: #9073e7; box-shadow: 0 0 0 5px rgb(144 115 231 / 11%); }
+.intro-dot:last-child { background: #6cae79; box-shadow: 0 0 0 5px rgb(108 174 121 / 11%); }
+.intro-line { width: 92px; height: 1px; background: linear-gradient(90deg, rgb(144 115 231 / 52%), rgb(108 174 121 / 52%)); }
+.intro-access { position: relative; z-index: 1; padding: 31px 29px 27px; border: 1px solid rgb(255 255 255 / 90%); border-radius: 25px; background: rgb(255 255 255 / 89%); box-shadow: 0 17px 46px rgb(55 44 78 / 9%), inset 0 1px 0 #fff; animation: intro-card-enter .8s .14s both; }
+.intro-access h2 { margin: 0 0 23px; color: #302a3c; font: 700 22px/1.25 Manrope, sans-serif; letter-spacing: -.045em; }
+.intro-form .field { gap: 7px; margin-bottom: 15px; }
+.intro-form .field label { color: #665e70; font-size: 11px; }
+.intro-form .field input { height: 47px; border-radius: 12px; background: #fbfaff; font-size: 12px; }
+.intro-form .field input:focus { background: #fff; }
+.intro-submit { width: 100%; min-height: 47px; margin-top: 13px; border-radius: 13px; background: linear-gradient(115deg, #805ee5, #6949d1 68%, #3e9764); box-shadow: 0 8px 19px rgb(103 76 194 / 19%); }
+.intro-submit:hover { background: linear-gradient(115deg, #9478ed, #7456d8 68%, #368b59); }
+.intro-remember { display: flex; align-items: center; gap: 9px; margin: 1px 0 0; color: #716b7c; font-size: 10px; cursor: pointer; }
+.intro-remember input { width: 15px; height: 15px; margin: 0; accent-color: #7455d8; }
+.intro-password-note { margin: 11px 0 17px; color: #96909f; font-size: 9px; line-height: 1.5; }
+.intro-switch { margin: 17px 0 0; color: #817a8c; font-size: 10px; text-align: center; }
+.intro-switch button { border: 0; padding: 2px 3px; background: transparent; color: #6949c7; font: inherit; font-weight: 800; cursor: pointer; }
+.intro-switch button:hover { text-decoration: underline; }
+.intro-account-card { display: flex; align-items: center; gap: 13px; min-height: 82px; padding: 12px; border: 1px solid #eee9f8; border-radius: 16px; background: linear-gradient(135deg, #faf8ff, #f5faf6); }
+.intro-account-card .avatar { width: 52px; height: 52px; }
+.intro-account-card > div { display: grid; min-width: 0; gap: 5px; }
+.intro-account-card strong { overflow: hidden; color: #393244; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.intro-account-card span:not(.avatar) { color: #898291; font-size: 10px; }
+.intro-orb { position: absolute; z-index: -1; width: 230px; height: 230px; border: 1px solid rgb(130 105 203 / 13%); border-radius: 50%; box-shadow: 0 0 0 23px rgb(130 105 203 / 3%), 0 0 0 48px rgb(130 105 203 / 2%); pointer-events: none; animation: intro-orb-drift 15s ease-in-out infinite alternate; }
+.intro-orb-one { top: -103px; right: 13%; }
+.intro-orb-two { bottom: -135px; left: 9%; width: 280px; height: 280px; border-color: rgb(90 163 111 / 15%); animation-delay: -6s; }
+.intro-footer { position: absolute; bottom: 13px; left: 50%; margin: 0; color: #9891a3; font-size: 9px; letter-spacing: .06em; transform: translateX(-50%); }
+@keyframes intro-enter { from { opacity: 0; transform: translateY(19px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes intro-copy-enter { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes intro-title-enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes intro-card-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes intro-mark-float { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
+@keyframes intro-orb-drift { to { transform: translate3d(13px, 10px, 0) scale(1.04); } }
+.avatar-photo-preview { object-position: center 32%; }
+.profile-photo-edit.has-photo-preview .avatar { border: 3px solid #fff; box-shadow: 0 0 0 1px #e4dcf2, 0 7px 18px rgb(47 35 69 / 16%); }
+.theme-dark .intro-screen { background: radial-gradient(ellipse at 12% 14%, rgb(115 91 166 / 25%), transparent 34%), radial-gradient(ellipse at 89% 83%, rgb(75 138 93 / 18%), transparent 34%), #171420; }
+.theme-dark .intro-shell { border-color: rgb(255 255 255 / 9%); background: rgb(34 30 44 / 74%); box-shadow: 0 28px 90px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 7%); }
+.theme-dark .intro-brand, .theme-dark .intro-story h1, .theme-dark .intro-access h2 { color: #f2edf9; }
+.theme-dark .intro-copy, .theme-dark .intro-switch { color: #b5adbf; }
+.theme-dark .intro-access { border-color: rgb(255 255 255 / 8%); background: rgb(31 28 41 / 94%); }
+.theme-dark .intro-form .field label, .theme-dark .intro-remember { color: #c7bfd1; }
+.theme-dark .intro-form .field input { border-color: #42394f; background: #282434; color: #f1edf8; }
+.theme-dark .intro-password-note, .theme-dark .intro-footer { color: #aaa2b5; }
+.theme-dark .intro-account-card { border-color: #41394d; background: linear-gradient(135deg, #282434, #242a27); }
+.theme-dark .intro-account-card strong { color: #f1edf8; }
+@media (max-width: 760px) {
+  .intro-screen { min-height: 100dvh; align-items: flex-start; padding: max(20px, env(safe-area-inset-top)) 15px 24px; }
+  .intro-shell { width: min(480px, 100%); grid-template-columns: minmax(0, 1fr); gap: 25px; margin: auto; padding: 24px 20px 21px; border-radius: 27px; }
+  .intro-story { padding: 0; }
+  .intro-brand { margin-bottom: 31px; }
+  .intro-logo-mark { width: 38px; height: 38px; border-radius: 13px; font-size: 22px; }
+  .intro-eyebrow { margin-bottom: 9px; font-size: 9px; }
+  .intro-story h1 { font-size: clamp(38px, 11.5vw, 56px); }
+  .intro-copy { max-width: 320px; margin-top: 13px; font-size: 12px; }
+  .intro-decoration { display: none; }
+  .intro-access { padding: 21px 18px 19px; border-radius: 20px; }
+  .intro-access h2 { margin-bottom: 18px; font-size: 20px; }
+  .intro-form .field { margin-bottom: 12px; }
+  .intro-footer { position: relative; bottom: auto; left: auto; margin: 13px 0 0; text-align: center; transform: none; }
+}
+@media (max-width: 380px) {
+  .intro-screen { padding-inline: 10px; }
+  .intro-shell { padding-inline: 16px; }
+  .intro-access { padding-inline: 15px; }
+}
