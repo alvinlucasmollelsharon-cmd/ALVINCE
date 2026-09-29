@@ -910,3 +910,177 @@ async function boot() {
 
 boot();
 
+
+
+// ALVINCE welcome and sign-in gate.
+let alvinceIntroVisible = true;
+let alvinceIntroSwitchingAccount = false;
+const alvinceOriginalRender = render;
+const alvinceOriginalSubmitAuth = submitAuth;
+const alvinceOriginalNavigateAction = navigateAction;
+const alvinceOriginalSignOut = signOut;
+const alvinceOriginalEditProfileModal = editProfileModal;
+
+function alvinceRememberedUsername() {
+  try { return localStorage.getItem('alvince-remembered-username') || ''; }
+  catch (error) { return ''; }
+}
+
+function alvinceIntroView() {
+  const canContinue = Boolean(state.user && !alvinceIntroSwitchingAccount);
+  const register = state.authMode === 'register';
+  let accessPanel = '';
+  if (canContinue) {
+    accessPanel = '<div class="intro-account-card">' + avatar(state.user, 'avatar-lg') + '<div><strong>Welcome back, @' + esc(state.user.username) + '</strong><span>Your account is ready.</span></div></div>' +
+      '<button class="btn intro-submit" type="button" data-action="intro-continue">Continue to ALVINCE ' + ico('arrow') + '</button>' +
+      '<p class="intro-switch">Using a different account? <button type="button" data-action="intro-switch-account">Log in</button></p>';
+  } else {
+    accessPanel = (state.authError ? '<p class="form-alert" role="alert">' + esc(state.authError) + '</p>' : '') +
+      '<form class="intro-form" data-form="auth" autocomplete="on">' +
+      (register ? '<div class="field"><label for="intro-username">Username</label><input id="intro-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9][A-Za-z0-9_.]{1,18}[A-Za-z0-9]" autocomplete="username" placeholder="Choose a username" required></div><div class="field"><label for="intro-email">Email</label><input id="intro-email" type="email" name="email" maxlength="254" autocomplete="email" placeholder="you@example.com" required></div>' : '<div class="field"><label for="intro-identity">Username or email</label><input id="intro-identity" name="identity" value="' + esc(alvinceRememberedUsername()) + '" autocomplete="username" placeholder="Your username or email" required></div>') +
+      '<div class="field"><label for="intro-password">Password</label><input id="intro-password" type="password" name="password" minlength="10" maxlength="128" autocomplete="' + (register ? 'new-password' : 'current-password') + '" placeholder="' + (register ? 'At least 10 characters' : 'Your password') + '" required></div>' +
+      (!register ? '<label class="intro-remember"><input id="intro-remember-user" type="checkbox" ' + (alvinceRememberedUsername() ? 'checked' : '') + '> Remember my username</label>' : '') +
+      '<button class="btn intro-submit" type="submit">' + (register ? 'Create account' : 'Log in') + ' ' + ico('arrow') + '</button></form>' +
+      '<p class="intro-password-note">Your browser may offer to remember your password securely.</p>' +
+      '<p class="intro-switch">' + (register ? 'Already have an account?' : 'New to ALVINCE?') + ' <button type="button" data-action="' + (register ? 'intro-login' : 'intro-register') + '">' + (register ? 'Log in' : 'Create an account') + '</button></p>';
+  }
+  return '<main class="intro-screen"><div class="intro-orb intro-orb-one"></div><div class="intro-orb intro-orb-two"></div>' +
+    '<section class="intro-shell"><div class="intro-story"><div class="intro-brand"><span class="intro-logo-mark">A</span><span>ALVINCE</span></div>' +
+    '<p class="intro-eyebrow">A place to connect and share</p><h1>WELCOME<br><span>MRS ALICE ALVIN</span></h1>' +
+    '<p class="intro-copy">Your people, your moments, your community. Come on in.</p><div class="intro-decoration"><span class="intro-dot"></span><span class="intro-line"></span><span class="intro-dot"></span></div></div>' +
+    '<section class="intro-access" aria-labelledby="intro-access-title"><p class="intro-kicker">YOUR ALVINCE SPACE</p><h2 id="intro-access-title">' + (canContinue ? 'Pick up where you left off.' : register ? 'Create your account.' : 'Good to have you here.') + '</h2>' + accessPanel + '</section></section>' +
+    '<p class="intro-footer">A little room for good ideas.</p></main>';
+}
+
+render = function () {
+  if (state.avatarPreviewUrl && state.modal !== 'edit-profile') {
+    URL.revokeObjectURL(state.avatarPreviewUrl);
+    state.avatarPreviewUrl = null;
+  }
+  if (alvinceIntroVisible) {
+    document.body.classList.toggle('theme-dark', state.theme === 'dark');
+    app.classList.remove('is-messages');
+    app.innerHTML = alvinceIntroView();
+    return;
+  }
+  return alvinceOriginalRender();
+};
+
+editProfileModal = function () {
+  let markup = alvinceOriginalEditProfileModal();
+  if (state.avatarPreviewUrl) {
+    const adminClass = state.user && state.user.role === 'admin' ? ' avatar-admin' : '';
+    const oldAvatar = avatar(state.user, 'avatar-lg');
+    const preview = '<span class="avatar avatar-lg' + adminClass + '" aria-hidden="true"><img class="avatar-photo-preview" src="' + esc(state.avatarPreviewUrl) + '" alt=""></span>';
+    markup = markup.replace(oldAvatar, preview);
+    markup = markup.replace('<div class="profile-photo-edit">', '<div class="profile-photo-edit has-photo-preview">');
+  }
+  return markup;
+};
+
+navigateAction = function (action, target) {
+  if (action === 'intro-continue' && state.user) {
+    alvinceIntroVisible = false;
+    alvinceIntroSwitchingAccount = false;
+    render();
+    return;
+  }
+  if (action === 'intro-switch-account' || action === 'intro-login') {
+    alvinceIntroSwitchingAccount = true;
+    state.authMode = 'login';
+    state.authError = '';
+    render();
+    requestAnimationFrame(() => app.querySelector('#intro-identity')?.focus());
+    return;
+  }
+  if (action === 'intro-register') {
+    alvinceIntroSwitchingAccount = true;
+    state.authMode = 'register';
+    state.authError = '';
+    render();
+    requestAnimationFrame(() => app.querySelector('#intro-username')?.focus());
+    return;
+  }
+  return alvinceOriginalNavigateAction(action, target);
+};
+
+submitAuth = async function (form) {
+  const previousUser = state.user;
+  if (state.authMode === 'login') {
+    const identity = form.elements.identity?.value.trim() || '';
+    try {
+      if (form.querySelector('#intro-remember-user')?.checked && identity) localStorage.setItem('alvince-remembered-username', identity);
+      else localStorage.removeItem('alvince-remembered-username');
+    } catch (error) { /* Username recall is optional when browser storage is unavailable. */ }
+  }
+  await alvinceOriginalSubmitAuth(form);
+  if (state.user && state.user !== previousUser) {
+    alvinceIntroVisible = false;
+    alvinceIntroSwitchingAccount = false;
+    render();
+  }
+};
+
+signOut = async function () {
+  await alvinceOriginalSignOut();
+  if (!state.user) {
+    alvinceIntroVisible = true;
+    alvinceIntroSwitchingAccount = false;
+    state.authMode = 'login';
+    state.authError = '';
+    render();
+  }
+};
+
+app.addEventListener('change', (event) => {
+  if (!event.target.matches('[data-input="avatar-file"]')) return;
+  const file = event.target.files && event.target.files[0];
+  if (!file || file.size > 12 * 1024 * 1024) return;
+  if (state.avatarPreviewUrl) URL.revokeObjectURL(state.avatarPreviewUrl);
+  state.avatarPreviewUrl = URL.createObjectURL(file);
+  const form = event.target.closest('form');
+  if (form) state.profileDraft = { username: form.elements.username.value, bio: form.elements.bio.value };
+  render();
+}, true);
+
+let alvinceAvatarSubmitReady = false;
+app.addEventListener('submit', async (event) => {
+  if (event.target.dataset.form !== 'edit-profile') return;
+  if (alvinceAvatarSubmitReady) { alvinceAvatarSubmitReady = false; return; }
+  if (!state.avatarFile) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const form = event.target;
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  try {
+    state.avatarFile = await alvincePrepareAvatar(state.avatarFile);
+    alvinceAvatarSubmitReady = true;
+    form.requestSubmit(submit);
+  } catch (error) {
+    submit.disabled = false;
+    notify('That photo could not be prepared. Please choose another image.', true);
+  }
+}, true);
+
+async function alvincePrepareAvatar(file) {
+  if (!file || file.type === 'image/gif' || !file.type.startsWith('image/')) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sourceX = Math.round((bitmap.width - side) / 2);
+    const sourceY = Math.round((bitmap.height - side) * 0.32);
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, sourceX, sourceY, side, side, 0, 0, 512, 512);
+    bitmap.close();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.9));
+    if (!blob) return file;
+    const extension = blob.type === 'image/jpeg' ? '.jpg' : blob.type === 'image/png' ? '.png' : '.webp';
+    return new File([blob], 'alvince-profile' + extension, { type: blob.type || 'image/webp', lastModified: Date.now() });
+  } catch (error) { return file; }
+}
+
+render();
