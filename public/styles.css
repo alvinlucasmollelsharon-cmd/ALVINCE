@@ -681,3 +681,13 @@ html, body { height: 100%; overflow: hidden; }
 .remember-row { display: flex; align-items: center; gap: 9px; margin: 2px 0 9px; color: var(--muted-strong); font-size: 11px; font-weight: 600; cursor: pointer; }
 .remember-row input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--accent-strong); }
 .remember-hint { margin: 0 0 14px 25px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+
+/* Keep account status notices compact and out of the way. */
+.toast-region { top: auto; right: 20px; bottom: 20px; left: auto; width: min(380px, calc(100vw - 40px)); justify-items: end; }
+.toast { width: max-content; max-width: 100%; min-height: 40px; padding: 9px 13px; border-radius: 12px; font-size: 11px; line-height: 1.4; }
+.toast::before { flex-basis: 22px; width: 22px; height: 22px; font-size: 12px; }
+@media (max-width: 680px) {
+  .toast-region { top: max(10px, env(safe-area-inset-top)); right: 10px; bottom: auto; left: 10px; width: auto; justify-items: center; }
+  .toast { max-width: 100%; font-size: 11px; }
+}
