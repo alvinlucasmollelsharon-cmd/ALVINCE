@@ -305,8 +305,8 @@ function authModal() {
   const register = state.authMode === 'register';
   return `<div class="modal-backdrop" data-action="backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><header class="modal-head"><div><div class="auth-logo"><span class="brand-mark">A</span> ALVINCE</div><p class="modal-kicker">${register ? 'YOUR COMMUNITY IS WAITING' : 'GOOD TO HAVE YOU BACK'}</p><h2 class="modal-title" id="auth-title">${register ? 'Create your space.' : 'Welcome back.'}</h2><p class="modal-subtitle">${register ? 'Pick your name. Bring what you’ve got.' : 'Log in and pick up where you left off.'}</p></div><button class="modal-close" type="button" data-action="close-modal" aria-label="Close">×</button></header>
       <div class="modal-body">${state.authError ? `<p class="form-alert" role="alert">${esc(state.authError)}</p>` : ''}<form data-form="auth" autocomplete="on">
-        ${register ? `<div class="field"><label for="auth-username">Username</label><input id="auth-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9][A-Za-z0-9_.]{1,18}[A-Za-z0-9]" autocomplete="username" placeholder="e.g. alvinceuser" required></div><div class="field"><label for="auth-email">Email</label><input id="auth-email" type="email" name="email" maxlength="254" autocomplete="email" placeholder="you@example.com" required></div>` : `<div class="field"><label for="auth-identity">Username or email</label><input id="auth-identity" name="identity" autocomplete="username" placeholder="Your username or email" required></div>`}
-        <div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" name="password" minlength="10" maxlength="128" autocomplete="${register ? 'new-password' : 'current-password'}" placeholder="${register ? 'At least 10 characters' : 'Your password'}" required></div>
+        ${register ? `<div class="field"><label for="auth-username">Username</label><input id="auth-username" name="username" minlength="3" maxlength="20" pattern="[A-Za-z0-9][A-Za-z0-9_.]{1,18}[A-Za-z0-9]" autocomplete="username" placeholder="e.g. alvinceuser" required></div><div class="field"><label for="auth-email">Email</label><input id="auth-email" type="email" name="email" maxlength="254" autocomplete="email" placeholder="you@example.com" required></div>` : `<div class="field"><label for="auth-identity">Username or email</label><input id="auth-identity" name="identity" autocomplete="username" value="${esc(localStorage.getItem('alvince-remembered-username') || '')}" placeholder="Your username or email" required></div>`}
+        <div class="field"><label for="auth-password">Password</label><input id="auth-password" type="password" name="password" minlength="10" maxlength="128" autocomplete="${register ? 'new-password' : 'current-password'}" placeholder="${register ? 'At least 10 characters' : 'Your password'}" required></div>${!register ? `<label class="remember-row"><input type="checkbox" name="rememberUsername" ${localStorage.getItem('alvince-remembered-username') ? 'checked' : ''}><span>Remember my username on this device</span></label><p class="remember-hint">Your browser can save your password with its password manager.</p>` : ''}
         <button class="btn modal-submit" type="submit">${register ? 'Create my account' : 'Log in'} ${ico('arrow')}</button>
       </form><div class="modal-divider">YOUR NEXT CHAPTER STARTS HERE</div><p class="auth-switch">${register ? 'Already one of us?' : 'New to ALVINCE?'} <button type="button" data-action="auth-switch">${register ? 'Log in' : 'Create an account'}</button></p></div></section></div>`;
 }
@@ -642,12 +642,12 @@ async function signOut() {
 
 async function submitAuth(form) {
   const values = Object.fromEntries(new FormData(form));
-  const endpoint = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+  const endpoint = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login'; const rememberUsername = form.elements.rememberUsername?.checked; delete values.rememberUsername;
   const submit = form.querySelector('button[type="submit"]');
   submit.disabled = true;
   try {
     const result = await api(endpoint, { method: 'POST', json: values });
-    state.user = result.user; state.csrfToken = result.csrfToken; state.modal = null; state.authError = '';
+    if (state.authMode === 'login') { if (rememberUsername) localStorage.setItem('alvince-remembered-username', result.user.username); else localStorage.removeItem('alvince-remembered-username'); } state.user = result.user; state.csrfToken = result.csrfToken; state.modal = null; state.authError = '';
     state.page = 'home'; state.feedType = 'all';
     setRoute({ feedType: 'all' });
     await refreshCommunityData();
