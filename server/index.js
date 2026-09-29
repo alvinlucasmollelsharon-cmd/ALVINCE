@@ -17,9 +17,9 @@ const typingSignals = new Map();
 const safeEqualText = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && (awaitlessTimingSafeEqual(a, b));
 function awaitlessTimingSafeEqual(a, b) {
   // Values are public-token-length or user-supplied token text; equal lengths are checked before the constant-time comparison.
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-}
-import { timingSafeEqual } from 'node:crypto';
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));}
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 
 function json(res, status, body, headers = {}) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers });
@@ -473,8 +473,8 @@ const server = createServer(async (req, res) => {
   res.setHeader('x-content-type-options', 'nosniff');
   res.setHeader('x-frame-options', 'DENY');
   res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
-  res.setHeader('permissions-policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('content-security-policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+  res.setHeader('permissions-policy', 'camera=(self), microphone=(self), geolocation=()');
+  res.setHeader('content-security-policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' stun: turn: turns:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     if (url.pathname.startsWith('/api/')) {
@@ -503,3 +503,113 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+
+const activeCalls = new Map();
+const userActiveCalls = new Map();
+const callInboxes = new Map();
+let callSignalId = Date.now() * 100;
+
+function pushCallEvent(to, type, callId, mode, from, payload = {}) {
+  const inbox = callInboxes.get(to) || [];
+  inbox.push({ id: ++callSignalId, type, callId, mode, fromId: from?.id || null, from: from ? { id: from.id, username: from.username, avatarUrl: from.avatar_name ? '/media/' + encodeURIComponent(from.avatar_name) : null } : null, payload, createdAt: Date.now() });
+  callInboxes.set(to, inbox.slice(-100));
+}
+
+function pruneCalls() {
+  const now = Date.now();
+  for (const [userId, events] of callInboxes) {
+    const recent = events.filter((event) => now - event.createdAt < 2 * 60 * 1000);
+    if (recent.length) callInboxes.set(userId, recent); else callInboxes.delete(userId);
+  }
+  for (const [id, call] of activeCalls) {
+    const expiredInvite = !call.accepted && now - call.createdAt > 45 * 1000;
+    if (!expiredInvite && now - call.lastActivity < 2 * 60 * 1000) continue;
+    const other = call.members.find((member) => member !== call.callerId);
+    pushCallEvent(other, 'ended', id, call.mode, null, { reason: 'timeout' });
+    for (const member of call.members) if (userActiveCalls.get(member) === id) userActiveCalls.delete(member);
+    activeCalls.delete(id);
+  }
+}
+
+async function handleCallApi(req, res, url, session) {
+  const path = url.pathname;
+  const method = req.method;
+  const user = requireUser(session);
+  pruneCalls();
+
+  if (method === 'GET' && path === '/api/calls/ice') {
+    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    const turnUrls = (process.env.TURN_URLS || '').split(',').map((value) => value.trim()).filter(Boolean);
+    if (turnUrls.length && process.env.TURN_SHARED_SECRET) {
+      const username = (Math.floor(Date.now() / 1000) + 86400) + ':' + user.id;
+      const credential = createHmac('sha1', process.env.TURN_SHARED_SECRET).update(username).digest('base64');
+      iceServers.push({ urls: turnUrls, username, credential });
+    }
+    json(res, 200, { iceServers }); return true;
+  }
+
+  if (method === 'GET' && path === '/api/calls/events') {
+    limited(req, 'call-poll', 240, 60 * 1000);
+    const afterText = url.searchParams.get('after') || '0';
+    if (!/^\d{1,16}$/.test(afterText)) throw fail(400, 'Refresh ALVINCE and try again.');
+    const after = Number(afterText);
+    const events = (callInboxes.get(user.id) || []).filter((event) => event.id > after);
+    json(res, 200, { events: events.slice(0, 50) }); return true;
+  }
+
+  const friendId = patternPath(path, /^\/api\/calls\/([^/]+)$/);
+  if (method === 'POST' && friendId) {
+    validateSameOrigin(req); requireCsrf(session, req); limited(req, 'call-start', 12, 60 * 1000);
+    if (!areFriends(user.id, friendId)) throw fail(403, 'Calls are available between friends.');
+    if (userActiveCalls.has(user.id) || userActiveCalls.has(friendId)) throw fail(409, 'One of you is already in a call.');
+    const input = await readJson(req, 2048);
+    if (!['voice', 'video'].includes(input.mode)) throw fail(400, 'Choose a voice or video call.');
+    const friend = db.prepare('SELECT id, username, avatar_name FROM users WHERE id = ? AND disabled = 0').get(friendId);
+    if (!friend) throw fail(404, 'That person could not be found.');
+    const callId = newId();
+    const call = { id: callId, callerId: user.id, members: [user.id, friendId], mode: input.mode, createdAt: Date.now(), lastActivity: Date.now(), accepted: false };
+    activeCalls.set(callId, call);
+    for (const member of call.members) userActiveCalls.set(member, callId);
+    const caller = db.prepare('SELECT id, username, avatar_name FROM users WHERE id = ?').get(user.id);
+    pushCallEvent(friendId, 'invite', callId, input.mode, caller);
+    json(res, 201, { callId, mode: call.mode }); return true;
+  }
+
+  if (method === 'POST' && /^\/api\/calls\/[^/]+\/events$/.test(path)) {
+    validateSameOrigin(req); requireCsrf(session, req); limited(req, 'call-signal', 360, 60 * 1000);
+    const match = path.match(/^\/api\/calls\/([^/]+)\/events$/);
+    const callId = decodeURIComponent(match?.[1] || '');
+    const call = activeCalls.get(callId);
+    if (!call || !call.members.includes(user.id)) throw fail(404, 'This call has ended.');
+    const recipient = call.members.find((member) => member !== user.id);
+    if (!areFriends(user.id, recipient)) throw fail(403, 'Calls are available between friends.');
+    const input = await readJson(req, 16 * 1024);
+    if (!['accept', 'decline', 'end', 'offer', 'answer', 'ice', 'ping'].includes(input.type)) throw fail(400, 'This call signal is not supported.');
+    call.lastActivity = Date.now();
+    if (input.type === 'accept') {
+      if (user.id === call.callerId || call.accepted) throw fail(409, 'This call is no longer waiting.');
+      call.accepted = true;
+    }
+    if (['offer', 'answer'].includes(input.type) && (typeof input.payload?.sdp !== 'string' || input.payload.sdp.length > 12000)) throw fail(400, 'The call could not be connected. Try again.');
+    if (input.type === 'ice') {
+      const candidate = input.payload?.candidate;
+      if (candidate != null && (typeof candidate !== 'string' || candidate.length > 4096)) throw fail(400, 'The call network details could not be sent.');
+    }
+    if (input.type !== 'ping') pushCallEvent(recipient, input.type === 'decline' || input.type === 'end' ? 'ended' : input.type, callId, call.mode, { id: user.id, username: user.username }, input.payload || {});
+    if (input.type === 'decline' || input.type === 'end') {
+      for (const member of call.members) if (userActiveCalls.get(member) === callId) userActiveCalls.delete(member);
+      activeCalls.delete(callId);
+    }
+    json(res, 200, { ok: true }); return true;
+  }
+  return false;
+}
+
+const alvinceHandleApiBeforeCalls = handleApi;
+handleApi = async function (req, res, url, session) {
+  if (url.pathname.startsWith('/api/calls/')) {
+    const handled = await handleCallApi(req, res, url, session);
+    if (handled) return;
+  }
+  return alvinceHandleApiBeforeCalls(req, res, url, session);
+};
