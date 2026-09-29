@@ -769,3 +769,66 @@ html, body { height: 100%; overflow: hidden; }
   .intro-shell { padding-inline: 16px; }
   .intro-access { padding-inline: 15px; }
 }
+
+
+/* Calls from friend chats */
+.chat-call-actions { display: flex; flex: 0 0 auto; gap: 7px; margin-left: auto; }
+.chat-call-button { display: grid; place-items: center; width: 37px; height: 37px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-alt); color: #6750a4; cursor: pointer; transition: transform .18s ease, background .18s ease, color .18s ease; }
+.chat-call-button:hover { transform: translateY(-1px); background: #eee8fb; color: #4c357f; }
+.chat-call-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme-dark .chat-call-button { border-color: #4a4257; background: #302b3a; color: #c8b6ff; }
+.theme-dark .chat-call-button:hover { background: #3c334e; }
+
+.call-screen { position: fixed; z-index: 1000; inset: 0; display: flex; flex-direction: column; min-height: 100dvh; overflow: hidden; background: #14131a; color: #faf9fc; animation: call-screen-in .22s ease-out both; }
+.call-topbar { display: flex; flex: 0 0 62px; align-items: center; gap: 15px; padding: 0 clamp(16px, 4vw, 38px); border-bottom: 1px solid rgb(255 255 255 / 8%); background: #1b1a22; }
+.call-brand { display: flex; align-items: center; gap: 9px; font: 800 12px Manrope, sans-serif; letter-spacing: .13em; }
+.call-brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid rgb(255 255 255 / 30%); border-radius: 10px; background: linear-gradient(145deg, #a485ff, #7751e7); color: white; font-size: 17px; box-shadow: 0 4px 14px rgb(117 81 231 / 32%); }
+.call-private-label { color: #aba6b6; font-size: 9px; font-weight: 700; letter-spacing: .15em; }
+.call-close { display: grid; place-items: center; width: 36px; height: 36px; margin-left: auto; border: 1px solid rgb(255 255 255 / 10%); border-radius: 50%; background: #282630; color: #ddd8e7; cursor: pointer; }
+.call-close svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+.call-stage { position: relative; display: grid; flex: 1 1 auto; min-height: 0; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 50% 43%, #302542 0, #201d29 36%, #17161d 80%); }
+.call-stage-video { background: #0d0d12; }
+.call-remote-video { position: absolute; inset: 0; display: none; width: 100%; height: 100%; object-fit: contain; background: #0d0d12; }
+.call-stage-video.has-remote-video .call-remote-video { display: block; }
+.call-stage-video.has-remote-video .call-remote-center { opacity: 0; pointer-events: none; }
+.call-remote-center { position: relative; z-index: 1; display: grid; justify-items: center; gap: 12px; padding: 30px; text-align: center; transition: opacity .2s ease; }
+.call-avatar { width: clamp(112px, 19vw, 176px); height: clamp(112px, 19vw, 176px); border: 4px solid rgb(255 255 255 / 11%); background: #514167; color: #fff; font-size: clamp(34px, 6vw, 54px); box-shadow: 0 0 0 12px rgb(255 255 255 / 3%), 0 20px 64px rgb(0 0 0 / 40%); }
+.call-remote-center h1 { margin: 4px 0 0; font: 700 clamp(20px, 3vw, 29px)/1.2 Manrope, sans-serif; letter-spacing: -.035em; }
+.call-status { margin: 0; color: #b9b3c3; font-size: 13px; }
+.call-status [data-call-duration] { color: #f3effb; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: .08em; }
+.call-local-tile { position: absolute; z-index: 2; right: clamp(16px, 3vw, 34px); bottom: 24px; width: clamp(128px, 22vw, 270px); aspect-ratio: 16/10; overflow: hidden; border: 1px solid rgb(255 255 255 / 19%); border-radius: 16px; background: #292631; box-shadow: 0 12px 38px rgb(0 0 0 / 38%); }
+.call-local-tile video { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.call-local-tile span { position: absolute; bottom: 8px; left: 10px; padding: 3px 7px; border-radius: 6px; background: rgb(15 14 19 / 66%); color: white; font-size: 9px; }
+.call-controls { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 24px); min-height: 112px; padding: 16px max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); border-top: 1px solid rgb(255 255 255 / 7%); background: #1a1921; }
+.call-control { display: flex; min-width: 63px; flex-direction: column; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: #dfdae8; cursor: pointer; }
+.call-control > span { display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 50%; background: #32303b; color: white; font-size: 16px; transition: background .18s ease, transform .18s ease; }
+.call-control:hover > span { transform: translateY(-2px); background: #454151; }
+.call-control > span svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.call-control small { color: #c3bdcd; font-size: 10px; white-space: nowrap; }
+.call-control.is-off > span { background: #46434e; color: #ffb9c0; }
+.call-control.call-answer > span { background: #28a269; }
+.call-control.call-decline > span { background: #e64c5d; }
+.call-control.call-decline[data-call-action="end"] > span svg { transform: rotate(135deg); }
+.call-control.call-answer > span svg { transform: rotate(-135deg); }
+@keyframes call-screen-in { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 760px) {
+  .chat-call-actions { gap: 5px; }
+  .chat-call-button { width: 33px; height: 33px; }
+  .chat-call-button svg { width: 16px; height: 16px; }
+  .call-topbar { flex-basis: 56px; padding-inline: 13px; }
+  .call-private-label { font-size: 8px; letter-spacing: .1em; }
+  .call-controls { min-height: 100px; gap: 11px; }
+  .call-control { min-width: 55px; }
+  .call-control > span { width: 48px; height: 48px; }
+  .call-local-tile { right: 13px; bottom: 14px; width: min(34vw, 164px); border-radius: 12px; }
+  .call-remote-center { gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .call-screen, .chat-call-button, .call-control > span { animation: none; transition: none; }
+}
+@media (max-width: 380px) {
+  .call-controls { gap: 6px; }
+  .call-control { min-width: 49px; }
+  .call-control > span { width: 43px; height: 43px; }
+  .call-control small { font-size: 9px; }
+}
