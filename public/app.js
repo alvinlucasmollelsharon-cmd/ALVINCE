@@ -399,7 +399,7 @@ async function refreshCommunityData() {
 }
 
 function startMessageSync() {
-  if (!messageSyncTimer) messageSyncTimer = window.setInterval(syncMessagePage, 1800);
+  if (!messageSyncTimer) messageSyncTimer = window.setInterval(syncMessagePage, 1000);
 }
 
 function stopMessageSync() {
