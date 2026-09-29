@@ -1106,3 +1106,177 @@ app.addEventListener('change', (event) => {
   if (password) password.type = event.target.checked ? 'text' : 'password';
 });
 render();
+
+
+// One-to-one voice and video calling over WebRTC.
+icons.phone = '<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3a2 2 0 0 1 2 1.7l.5 2.8a2 2 0 0 1-.6 1.8L8.1 11a16 16 0 0 0 4.9 4.9l1.7-1.9a2 2 0 0 1 1.8-.6l2.8.5a2 2 0 0 1 1.7 2Z"/>';
+icons.mic = '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/>';
+icons.volume = '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/>';
+let callSignalCursor = 0;
+let callPollTimer = null;
+let callClockTimer = null;
+let callPollBusy = false;
+let callIceServers = null;
+
+function ensureCallButtons() {
+  const head = app.querySelector('.chat-head');
+  if (!head || !state.conversation?.friend || head.querySelector('.chat-call-actions')) return;
+  const actions = document.createElement('div');
+  actions.className = 'chat-call-actions';
+  actions.innerHTML = '<button class="chat-call-button" type="button" data-call-start="voice" aria-label="Start voice call" title="Voice call">' + ico('phone') + '</button><button class="chat-call-button chat-video-button" type="button" data-call-start="video" aria-label="Start video call" title="Video call">' + ico('video') + '</button>';
+  head.append(actions);
+}
+
+function callOverlayHtml() {
+  const call = state.call;
+  if (!call) return '';
+  const incoming = call.phase === 'incoming';
+  const videoCall = call.mode === 'video';
+  let status = incoming ? 'Incoming ' + (videoCall ? 'video' : 'voice') + ' call' : call.phase === 'requesting' ? 'Getting your call ready…' : call.phase === 'calling' ? 'Calling…' : call.phase === 'connected' ? '<span data-call-duration>00:00</span>' : call.phase === 'reconnecting' ? 'Reconnecting…' : 'Connecting…';
+  let controls = '';
+  if (incoming) {
+    controls = '<button class="call-control call-answer" type="button" data-call-action="answer" aria-label="Answer call"><span>' + ico(videoCall ? 'video' : 'phone') + '</span><small>Answer</small></button><button class="call-control call-decline" type="button" data-call-action="decline" aria-label="Decline call"><span>' + ico('close') + '</span><small>Decline</small></button>';
+  } else {
+    controls = '<button class="call-control ' + (call.muted ? 'is-off' : '') + '" type="button" data-call-action="microphone" aria-label="' + (call.muted ? 'Turn microphone on' : 'Mute microphone') + '"><span>' + (call.muted ? ico('close') : ico('mic')) + '</span><small>' + (call.muted ? 'Unmute' : 'Mute') + '</small></button>';
+    if (videoCall) controls += '<button class="call-control ' + (call.cameraOff ? 'is-off' : '') + '" type="button" data-call-action="camera" aria-label="' + (call.cameraOff ? 'Turn camera on' : 'Turn camera off') + '"><span>' + ico('video') + '</span><small>' + (call.cameraOff ? 'Start video' : 'Stop video') + '</small></button>';
+    controls += '<button class="call-control ' + (call.speakerOff ? 'is-off' : '') + '" type="button" data-call-action="speaker" aria-label="' + (call.speakerOff ? 'Turn speaker on' : 'Mute speaker') + '"><span>' + ico('volume') + '</span><small>' + (call.speakerOff ? 'Unmute' : 'Speaker') + '</small></button><button class="call-control call-decline" type="button" data-call-action="end" aria-label="End call"><span>' + ico('phone') + '</span><small>End</small></button>';
+  }
+  const remoteMedia = videoCall ? '<video class="call-remote-video" data-call-remote autoplay playsinline></video>' : '<audio data-call-audio autoplay></audio>';
+  const localTile = videoCall && call.localStream?.getVideoTracks().length ? '<div class="call-local-tile"><video data-call-local autoplay muted playsinline></video><span>You</span></div>' : '';
+  return '<section class="call-screen ' + (videoCall ? 'call-screen-video' : 'call-screen-voice') + '" role="dialog" aria-modal="true" aria-label="' + (videoCall ? 'Video' : 'Voice') + ' call with ' + esc(call.friend.username) + '"><header class="call-topbar"><span class="call-brand"><span class="call-brand-mark">A</span> ALVINCE</span><span class="call-private-label">PRIVATE ' + (videoCall ? 'VIDEO' : 'VOICE') + ' CALL</span><button class="call-close" type="button" data-call-action="end" aria-label="End call">' + ico('close') + '</button></header><div class="call-stage ' + (videoCall ? 'call-stage-video' : '') + '">' + remoteMedia + '<div class="call-remote-center">' + avatar(call.friend, 'call-avatar') + '<h1>@' + esc(call.friend.username) + '</h1><p class="call-status" role="status" aria-live="polite">' + status + '</p></div>' + localTile + '</div><footer class="call-controls">' + controls + '</footer></section>';
+}
+
+function bindCallMedia() {
+  const call = state.call;
+  if (!call) return;
+  const remoteVideo = app.querySelector('[data-call-remote]');
+  const remoteAudio = app.querySelector('[data-call-audio]');
+  const localVideo = app.querySelector('[data-call-local]');
+  if (remoteVideo && call.remoteStream) {
+    if (remoteVideo.srcObject !== call.remoteStream) remoteVideo.srcObject = call.remoteStream;
+    remoteVideo.play().catch(() => {});
+    if (call.remoteStream.getVideoTracks().some((track) => track.readyState === 'live')) app.querySelector('.call-stage')?.classList.add('has-remote-video');
+  }
+  if (remoteAudio && call.remoteStream && remoteAudio.srcObject !== call.remoteStream) { remoteAudio.srcObject = call.remoteStream; remoteAudio.play().catch(() => {}); }
+  if (localVideo && call.localStream && localVideo.srcObject !== call.localStream) { localVideo.srcObject = call.localStream; localVideo.play().catch(() => {}); }
+  const duration = app.querySelector('[data-call-duration]');
+  if (duration && call.startedAt) { const elapsed = Math.floor((Date.now() - call.startedAt) / 1000); duration.textContent = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0'); }
+}
+
+const renderBeforeCalls = render;
+render = function () {
+  renderBeforeCalls();
+  ensureCallButtons();
+  if (state.call) { const holder = document.createElement('div'); holder.innerHTML = callOverlayHtml(); if (holder.firstElementChild) app.append(holder.firstElementChild); bindCallMedia(); }
+  if (state.user) startCallSync(); else stopCallSync();
+};
+
+function startCallSync() {
+  if (callPollTimer) return;
+  void syncCallSignals();
+  callPollTimer = setInterval(syncCallSignals, 1000);
+  callClockTimer = setInterval(() => {
+    bindCallMedia();
+    if (state.call?.id && Date.now() - (state.call.lastPingAt || 0) >= 15000) { state.call.lastPingAt = Date.now(); void sendCallEvent(state.call, 'ping'); }
+  }, 1000);
+}
+function stopCallSync() { if (callPollTimer) clearInterval(callPollTimer); if (callClockTimer) clearInterval(callClockTimer); callPollTimer = null; callClockTimer = null; callSignalCursor = 0; }
+async function syncCallSignals() {
+  if (!state.user || callPollBusy) return;
+  callPollBusy = true;
+  try { const result = await api('/api/calls/events?after=' + callSignalCursor); for (const event of result.events || []) { callSignalCursor = Math.max(callSignalCursor, event.id); await handleCallSignal(event); } }
+  catch { /* Retry automatically while the account stays open. */ }
+  finally { callPollBusy = false; }
+}
+async function sendCallEvent(call, type, payload = {}) {
+  if (!call?.id) return;
+  try { await api('/api/calls/' + encodeURIComponent(call.id) + '/events', { method: 'POST', json: { type, payload } }); }
+  catch (error) { if (type !== 'end' && type !== 'decline') notify(error.message, true); }
+}
+function closeCall(tellFriend = false, signal = 'end') {
+  const call = state.call; if (!call) return;
+  if (tellFriend && call.id) void sendCallEvent(call, signal);
+  if (call.connectionTimer) clearTimeout(call.connectionTimer);
+  call.peer?.close();
+  for (const track of call.localStream?.getTracks() || []) track.stop();
+  state.call = null; render();
+}
+async function loadCallNetwork() { if (callIceServers) return callIceServers; const result = await api('/api/calls/ice'); callIceServers = result.iceServers; return callIceServers; }
+function prepareCallPeer(call) {
+  call.peer = new RTCPeerConnection({ iceServers: callIceServers || [{ urls: 'stun:stun.l.google.com:19302' }] });
+  call.remoteStream = new MediaStream();
+  for (const track of call.localStream.getTracks()) call.peer.addTrack(track, call.localStream);
+  call.peer.ontrack = (event) => { if (event.streams[0]) call.remoteStream = event.streams[0]; else if (!call.remoteStream.getTracks().some((track) => track.id === event.track.id)) call.remoteStream.addTrack(event.track); bindCallMedia(); };
+  call.peer.onicecandidate = (event) => { if (event.candidate) void sendCallEvent(call, 'ice', event.candidate.toJSON()); };
+  call.peer.onconnectionstatechange = () => {
+    if (state.call !== call) return;
+    if (call.peer.connectionState === 'connected') { if (call.connectionTimer) clearTimeout(call.connectionTimer); call.phase = 'connected'; call.startedAt ||= Date.now(); render(); }
+    else if (call.peer.connectionState === 'disconnected' || call.peer.connectionState === 'failed') {
+      call.phase = 'reconnecting'; render(); clearTimeout(call.connectionTimer);
+      call.connectionTimer = setTimeout(() => { if (state.call === call && (call.peer.connectionState === 'disconnected' || call.peer.connectionState === 'failed')) { notify('The network could not hold this call. Check your connection and try again.', true); closeCall(true); } }, 18000);
+    }
+  };
+}
+async function flushCallIce(call) { for (const candidate of call.pendingIce || []) { try { await call.peer.addIceCandidate(candidate); } catch { /* Skip candidates that expired during reconnect. */ } } call.pendingIce = []; }
+async function acceptCallOffer(call, offer) {
+  if (!call.peer || state.call !== call) { call.pendingOffer = offer; return; }
+  await call.peer.setRemoteDescription(offer); await flushCallIce(call);
+  const answer = await call.peer.createAnswer(); await call.peer.setLocalDescription(answer);
+  await sendCallEvent(call, 'answer', { sdp: call.peer.localDescription.sdp, type: call.peer.localDescription.type }); call.phase = 'connecting'; render();
+}
+async function handleCallSignal(event) {
+  if (event.type === 'invite') {
+    if (state.call) { void api('/api/calls/' + encodeURIComponent(event.callId) + '/events', { method: 'POST', json: { type: 'decline' } }).catch(() => {}); return; }
+    state.call = { id: event.callId, friend: event.from || { id: event.fromId, username: 'Friend' }, mode: event.mode, phase: 'incoming', pendingIce: [] }; render(); return;
+  }
+  const call = state.call; if (!call || event.callId !== call.id) return;
+  if (event.type === 'ended') { closeCall(); notify('The call has ended.'); return; }
+  if (event.type === 'accept') { call.phase = 'connecting'; render(); return; }
+  try {
+    if (event.type === 'offer') { await acceptCallOffer(call, event.payload); return; }
+    if (event.type === 'answer') { await call.peer.setRemoteDescription(event.payload); await flushCallIce(call); call.phase = 'connecting'; render(); return; }
+    if (event.type === 'ice') { if (call.peer?.remoteDescription) await call.peer.addIceCandidate(event.payload); else (call.pendingIce ||= []).push(event.payload); }
+  } catch { notify('The call could not connect. Check both internet connections and try again.', true); closeCall(true); }
+}
+async function beginCall(mode) {
+  const friend = state.conversation?.friend; if (!state.user || !friend || state.call) return;
+  const call = { id: null, friend, mode, phase: 'requesting', muted: false, cameraOff: false, speakerOff: false, pendingIce: [] }; state.call = call; render();
+  try {
+    if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) throw new Error('Calls need a supported browser and a secure HTTPS connection.');
+    callIceServers = await loadCallNetwork(); if (state.call !== call) return;
+    call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: mode === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } } : false });
+    if (state.call !== call) { for (const track of call.localStream.getTracks()) track.stop(); return; }
+    const result = await api('/api/calls/' + encodeURIComponent(friend.id), { method: 'POST', json: { mode } }); call.id = result.callId;
+    prepareCallPeer(call); call.phase = 'calling'; render();
+    const offer = await call.peer.createOffer(); await call.peer.setLocalDescription(offer);
+    await sendCallEvent(call, 'offer', { type: call.peer.localDescription.type, sdp: call.peer.localDescription.sdp });
+  } catch (error) { if (state.call !== call) return; closeCall(Boolean(call.id)); notify(error.name === 'NotAllowedError' ? 'Allow ALVINCE to use your microphone' + (mode === 'video' ? ' and camera' : '') + ' to place this call.' : error.message || 'The call could not be started.', true); }
+}
+async function answerCall() {
+  const call = state.call; if (!call || call.phase !== 'incoming') return; call.phase = 'requesting'; render();
+  try {
+    callIceServers = await loadCallNetwork();
+    call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: call.mode === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } } : false });
+    if (state.call !== call) { for (const track of call.localStream.getTracks()) track.stop(); return; }
+    prepareCallPeer(call); call.phase = 'connecting'; render(); await sendCallEvent(call, 'accept');
+    if (call.pendingOffer) { const offer = call.pendingOffer; call.pendingOffer = null; await acceptCallOffer(call, offer); }
+  } catch (error) { if (state.call !== call) return; closeCall(true, 'decline'); notify(error.name === 'NotAllowedError' ? 'Allow ALVINCE to use your microphone' + (call.mode === 'video' ? ' and camera' : '') + ' to answer.' : 'This call could not be answered.', true); }
+}
+
+app.addEventListener('click', async (event) => {
+  const start = event.target.closest('[data-call-start]');
+  if (start) { event.preventDefault(); await beginCall(start.dataset.callStart); return; }
+  const control = event.target.closest('[data-call-action]'); if (!control || !state.call) return; event.preventDefault();
+  const call = state.call;
+  if (control.dataset.callAction === 'answer') { await answerCall(); return; }
+  if (control.dataset.callAction === 'decline') { closeCall(true, 'decline'); return; }
+  if (control.dataset.callAction === 'end') { closeCall(true); return; }
+  if (control.dataset.callAction === 'microphone') { call.muted = !call.muted; for (const track of call.localStream?.getAudioTracks() || []) track.enabled = !call.muted; }
+  if (control.dataset.callAction === 'camera') { call.cameraOff = !call.cameraOff; for (const track of call.localStream?.getVideoTracks() || []) track.enabled = !call.cameraOff; }
+  if (control.dataset.callAction === 'speaker') { call.speakerOff = !call.speakerOff; for (const track of call.remoteStream?.getAudioTracks() || []) track.enabled = !call.speakerOff; }
+  render();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void syncCallSignals(); });
+const signOutBeforeCallCleanup = signOut;
+signOut = async function () { if (state.call) { await sendCallEvent(state.call, 'end'); closeCall(); } return signOutBeforeCallCleanup(); };
+render();
