@@ -135,25 +135,19 @@ function currentNav(page = state.page, feedType = state.feedType) {
   return ({ all: 'home', video: 'videos', picture: 'pictures', idea: 'ideas' })[feedType] || 'home';
 }
 
-function desktopSidebar() {
+
+
+function contactsSidebar() {
   const active = currentNav();
-  return `<aside class="sidebar">
-    <button class="brand" type="button" data-action="navigate" data-page="home" aria-label="ALVINCE home">
-      <span class="brand-mark">A</span><span class="brand-name">ALVINCE</span>
-    </button>
-    <p class="brand-note">MAKE ROOM FOR GOOD IDEAS</p>
-    <p class="nav-label">DISCOVER</p>
-    <nav class="nav-stack" aria-label="Main navigation">
-      ${navLinks().map(([page, name, icon, type]) => `<button class="nav-link ${active === page ? 'active' : ''}" type="button" data-action="feed-nav" data-type="${type}"><span class="nav-icon">${ico(icon)}</span><span class="nav-text">${name}</span></button>`).join('')}
-      ${state.user ? `<button class="nav-link ${active === 'friends' ? 'active' : ''}" type="button" data-action="friends"><span class="nav-icon">${ico('users')}</span><span class="nav-text">Friends</span>${state.incomingRequests.length ? `<span class="nav-badge">${state.incomingRequests.length}</span>` : ''}</button><button class="nav-link ${active === 'messages' ? 'active' : ''}" type="button" data-action="messages"><span class="nav-icon">${ico('messages')}</span><span class="nav-text">Messages</span>${state.messageFriends.some((friend) => friend.unread) ? '<span class="nav-badge">•</span>' : ''}</button>` : ''}
-      ${state.user ? `<button class="nav-link ${active === 'profile' ? 'active' : ''}" type="button" data-action="profile-me"><span class="nav-icon">${ico('users')}</span><span class="nav-text">My profile</span></button>` : ''}
-      ${state.user?.role === 'admin' ? `<button class="nav-link ${active === 'admin' ? 'active' : ''}" type="button" data-action="admin"><span class="nav-icon">${ico('shield')}</span><span class="nav-text">Admin</span></button>` : ''}
-    </nav>
-    <div class="sidebar-spacer"></div>
-    ${state.user ? `<button class="sidebar-create" type="button" data-action="compose">${ico('plus')}<span>Create something</span></button>` : `<div class="guest-card"><p class="guest-card-title">A little space, a lot to share.</p><p class="guest-card-copy">Join a community where good ideas find their people.</p><button class="btn" type="button" data-action="auth-register">Create an account ${ico('arrow')}</button></div>`}
-    <div class="sidebar-bottom">
-      ${state.user ? `<button class="sidebar-profile" type="button" data-action="profile-me">${avatar(state.user)}<span class="sidebar-profile-copy"><span class="sidebar-profile-name">${esc(state.user.username)}</span><span class="sidebar-profile-label">Your profile</span></span><span class="profile-chevron">${ico('dots')}</span></button>` : `<button class="sidebar-profile" type="button" data-action="auth-login">${avatar(null)}<span class="sidebar-profile-copy"><span class="sidebar-profile-name">Welcome to ALVINCE</span><span class="sidebar-profile-label">Log in to get started</span></span></button>`}
-    </div>
+  const contacts = state.messageFriends.length ? state.messageFriends : state.friends.map((friend) => ({ ...friend, friendId: friend.friendId || friend.id }));
+  const activeId = state.conversation?.friend.id || state.activeConversationId;
+  return `<aside class="contacts-sidebar" aria-label="Friends and conversations">
+    <header class="contacts-top"><button class="contacts-brand" type="button" data-action="feed-nav" data-type="all" aria-label="ALVINCE home"><span class="brand-mark">A</span><span class="brand-name">ALVINCE</span></button><button class="contacts-profile" type="button" data-action="${state.user ? 'profile-me' : 'auth-login'}" aria-label="${state.user ? 'Open your profile' : 'Log in'}">${avatar(state.user, 'avatar-sm')}</button></header>
+    <nav class="contacts-nav" aria-label="Main navigation"><button class="contacts-nav-link ${['home', 'videos', 'pictures', 'ideas'].includes(active) ? 'active' : ''}" type="button" data-action="feed-nav" data-type="all">${ico('home')}<span>Feed</span></button><button class="contacts-nav-link ${active === 'friends' ? 'active' : ''}" type="button" data-action="friends">${ico('users')}<span>Friends</span>${state.incomingRequests.length ? `<span class="nav-badge">${state.incomingRequests.length}</span>` : ''}</button><button class="contacts-nav-link ${active === 'messages' ? 'active' : ''}" type="button" data-action="messages">${ico('messages')}<span>Chats</span>${state.messageFriends.some((friend) => friend.unread) ? '<span class="nav-badge">•</span>' : ''}</button></nav>
+    <div class="contacts-heading"><div><p class="contacts-kicker">YOUR PEOPLE</p><h1>Chats</h1></div>${state.user?.role === 'admin' ? `<button class="contacts-tool" type="button" data-action="admin" aria-label="Owner dashboard">${ico('shield')}</button>` : ''}</div>
+    <button class="contacts-search" type="button" data-action="focus-search">${ico('search')}<span>Find people or start a chat</span></button>
+    <div class="contacts-list" aria-label="Friends">${contacts.length ? contacts.map((friend) => `<button class="contact-row ${activeId === friend.friendId ? 'active' : ''}" type="button" data-action="open-chat" data-id="${esc(friend.friendId)}">${avatar(friend)}<span class="contact-copy"><span class="contact-name">@${esc(friend.username)}</span><span class="contact-preview">${esc(friend.lastMessage || 'You’re friends — say hello')}</span></span><span class="contact-meta">${friend.unread ? `<span class="chat-unread">${friend.unread}</span>` : friend.lastMessageAt ? `<time>${esc(ago(friend.lastMessageAt))}</time>` : ''}</span></button>`).join('') : state.user ? `<div class="contacts-empty"><span class="contacts-empty-icon">${ico('users')}</span><b>Your circle starts here</b><p>Add a friend and their username will appear here.</p><button class="btn btn-small" type="button" data-action="focus-search">Find people ${ico('arrow')}</button></div>` : `<div class="contacts-empty"><span class="contacts-empty-icon">${ico('messages')}</span><b>Your people, in one place</b><p>Join ALVINCE to add friends and start private conversations.</p><button class="btn btn-small" type="button" data-action="auth-register">Join ALVINCE ${ico('arrow')}</button></div>`}</div>
+    <footer class="contacts-footer">${state.user ? `<button class="contacts-create" type="button" data-action="compose">${ico('plus')}<span>Share something</span></button><button class="contacts-account" type="button" data-action="profile-me">${avatar(state.user)}<span><b>@${esc(state.user.username)}</b><small>Your profile</small></span></button>` : `<button class="contacts-login" type="button" data-action="auth-login">Log in</button><button class="contacts-signup" type="button" data-action="auth-register">Create account</button>`}</footer>
   </aside>`;
 }
 
@@ -349,7 +343,8 @@ function render() {
   document.body.classList.toggle('theme-dark', state.theme === 'dark');
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', state.theme === 'dark' ? '#14121b' : '#f8f6fb');
   const main = state.page === 'profile' ? profileView() : state.page === 'admin' ? adminView() : state.page === 'friends' ? friendsView() : state.page === 'messages' ? messagesView() : feedView();
-  app.innerHTML = `${desktopSidebar()}<main class="main-area">${topbar()}<div class="page-content"><div class="feed-layout"><section class="feed-column">${main}</section>${rightRail()}</div></div></main>${mobileNav()}${modalHtml()}`;
+  app.classList.toggle('is-messages', state.page === 'messages');
+  app.innerHTML = `${contactsSidebar()}<main class="main-area">${topbar()}<div class="page-content"><div class="feed-layout"><section class="feed-column">${main}</section>${rightRail()}</div></div></main>${mobileNav()}${modalHtml()}`;
   if (state.page === 'messages' && state.user) startMessageSync();
   else stopMessageSync();
 }
