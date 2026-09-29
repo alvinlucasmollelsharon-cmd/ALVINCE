@@ -1084,3 +1084,10 @@ async function alvincePrepareAvatar(file) {
 }
 
 render();
+
+
+const alvinceIntroViewBeforeRememberFix = alvinceIntroView;
+alvinceIntroView = function () {
+  return alvinceIntroViewBeforeRememberFix().replace('id="intro-remember-user" type="checkbox"', 'id="intro-remember-user" name="rememberUsername" type="checkbox"');
+};
+render();
