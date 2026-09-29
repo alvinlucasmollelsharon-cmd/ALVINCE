@@ -676,3 +676,8 @@ html, body { height: 100%; overflow: hidden; }
   .is-messages .messages-layout.has-conversation .chat-panel { height: 100%; min-height: 0; }
   .is-messages .messages-layout.has-conversation .chat-back { display: grid; }
 }
+
+
+.remember-row { display: flex; align-items: center; gap: 9px; margin: 2px 0 9px; color: var(--muted-strong); font-size: 11px; font-weight: 600; cursor: pointer; }
+.remember-row input { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--accent-strong); }
+.remember-hint { margin: 0 0 14px 25px; color: var(--muted); font-size: 10px; line-height: 1.45; }
