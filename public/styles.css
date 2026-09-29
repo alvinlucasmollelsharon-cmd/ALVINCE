@@ -508,7 +508,7 @@ a { color: inherit; }
   .main-area { margin-left: 76px; }
   .page-content { padding-inline: 24px; }
 }
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .sidebar { display: none; }
   .main-area { margin-left: 0; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
   .topbar { height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 15px 0; }
@@ -579,3 +579,100 @@ a { color: inherit; }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
+
+html, body { height: 100%; overflow: hidden; }
+#app.app-shell { height: 100dvh; min-height: 0; overflow: hidden; }
+.contacts-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; width: 320px; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, var(--canvas)); }
+.contacts-top { display: flex; align-items: center; justify-content: space-between; min-height: 72px; padding: 0 19px; border-bottom: 1px solid var(--line); }
+.contacts-brand { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: var(--text); cursor: pointer; }
+.contacts-brand .brand-name { font: 800 13px Manrope, sans-serif; letter-spacing: .13em; }
+.contacts-brand .brand-mark { width: 34px; height: 34px; }
+.contacts-profile { display: grid; place-items: center; padding: 3px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.contacts-profile:hover { background: var(--surface-alt); }
+.contacts-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 12px 13px 10px; border-bottom: 1px solid var(--line); }
+.contacts-nav-link { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 39px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; color: var(--muted-strong); font-size: 11px; font-weight: 650; cursor: pointer; }
+.contacts-nav-link:hover { background: var(--surface-alt); color: var(--text); }
+.contacts-nav-link.active { background: #eaf5ee; color: #247448; }
+.contacts-nav-link svg, .contacts-tool svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.contacts-nav-link .nav-badge { position: absolute; top: 2px; right: 3px; min-width: 15px; height: 15px; font-size: 9px; }
+.contacts-heading { display: flex; align-items: center; justify-content: space-between; min-height: 65px; padding: 11px 19px 7px; }
+.contacts-kicker { margin: 0 0 3px; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .14em; }
+.contacts-heading h1 { margin: 0; font: 700 19px Manrope, sans-serif; letter-spacing: -.03em; }
+.contacts-tool { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--muted-strong); cursor: pointer; }
+.contacts-tool:hover { color: var(--accent-text); }
+.contacts-search { display: flex; align-items: center; gap: 9px; min-height: 39px; margin: 0 14px 10px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--muted); text-align: left; font-size: 10px; cursor: pointer; }
+.contacts-search:hover { border-color: #c4dfcc; color: var(--muted-strong); }
+.contacts-search svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.contacts-list { flex: 1; min-height: 0; overflow: auto; padding: 0 8px 12px; overscroll-behavior: contain; }
+.contact-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 66px; padding: 9px 10px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent); border-radius: 9px; background: transparent; color: var(--text); text-align: left; cursor: pointer; transition: background .16s ease; }
+.contact-row:hover, .contact-row.active { background: #edf5ef; }
+.contact-row .avatar { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; }
+.contact-copy { display: grid; flex: 1; min-width: 0; gap: 5px; }
+.contact-name { overflow: hidden; color: var(--text); font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.contact-preview { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.contact-meta { display: grid; justify-items: end; gap: 5px; align-self: stretch; padding-top: 3px; }
+.contact-meta time { color: var(--muted); font-size: 8px; white-space: nowrap; }
+.contacts-empty { display: grid; justify-items: center; gap: 9px; padding: 36px 20px 24px; color: var(--muted); text-align: center; }
+.contacts-empty-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 15px; background: var(--accent-soft); color: var(--accent-text); }
+.contacts-empty-icon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.contacts-empty b { color: var(--text); font-size: 11px; }
+.contacts-empty p { max-width: 215px; margin: 0; font-size: 10px; line-height: 1.55; }
+.contacts-empty .btn { min-height: 34px; margin-top: 3px; padding-inline: 11px; border-radius: 9px; font-size: 10px; }
+.contacts-footer { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 86%, var(--canvas)); }
+.contacts-create { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 37px; padding: 0 10px; border: 0; border-radius: 10px; background: #267949; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; }
+.contacts-create:hover { background: #1d683d; }
+.contacts-create svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.contacts-account { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 3px; border: 0; border-radius: 9px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.contacts-account:hover { background: var(--surface-alt); }
+.contacts-account .avatar { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; }
+.contacts-account > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
+.contacts-account b { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.contacts-account small { color: var(--muted); font-size: 9px; }
+.account-role { margin-left: auto; color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .08em; }
+.contacts-login, .contacts-signup { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--muted-strong); font-size: 10px; font-weight: 700; cursor: pointer; }
+.contacts-signup { border-color: #267949; background: #267949; color: white; }
+
+.main-area { display: flex; height: 100dvh; min-width: 0; flex-direction: column; margin-left: 320px; overflow: hidden; }
+.topbar { flex: 0 0 72px; }
+.page-content { flex: 1; min-height: 0; overflow: auto; }
+.feed-layout { width: min(1330px, 100%); grid-template-columns: minmax(0, 670px) minmax(220px, 286px); }
+.is-messages .page-content { overflow: hidden; padding: 0; }
+.is-messages .feed-layout { display: block; width: 100%; height: 100%; }
+.is-messages .feed-column, .is-messages .messages-page, .is-messages .messages-layout { width: 100%; height: 100%; min-height: 0; }
+.is-messages .messages-heading, .is-messages .right-rail, .is-messages .chat-friends { display: none; }
+.is-messages .messages-layout { display: block; }
+.is-messages .chat-panel { height: 100%; min-height: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; animation: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.is-messages .chat-head { flex: 0 0 66px; border-bottom-color: var(--line); background: var(--surface); }
+.is-messages .chat-messages { background: radial-gradient(ellipse at 50% 0, color-mix(in srgb, #46a86a 5%, transparent), transparent 65%), var(--canvas); }
+.is-messages .chat-message { border: 1px solid var(--line); background: var(--surface); }
+.is-messages .chat-message.mine { border-color: #c8e8c4; background: #d9fdd3; color: #27382a; }
+.is-messages .chat-compose { background: var(--surface); }
+.theme-dark .contacts-sidebar { background: color-mix(in srgb, var(--surface) 97%, black); }
+.theme-dark .contacts-nav-link.active, .theme-dark .contact-row:hover, .theme-dark .contact-row.active { background: #26372d; color: #c4edcd; }
+.theme-dark .is-messages .chat-message.mine { border-color: #34583c; background: #284b31; color: #e1f5e3; }
+
+@media (max-width: 900px) and (min-width: 761px) {
+  .contacts-sidebar { width: 285px; }
+  .main-area { margin-left: 285px; }
+  .page-content { padding-inline: 18px; }
+  .contacts-top { padding-inline: 15px; }
+  .contacts-nav { padding-inline: 8px; }
+  .contacts-nav-link { gap: 5px; padding-inline: 4px; font-size: 10px; }
+}
+@media (max-width: 760px) {
+  .contacts-sidebar { display: none; }
+  .main-area { height: 100dvh; margin-left: 0; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .is-messages .page-content { padding: 17px 14px 31px; overflow: auto; }
+  .is-messages .feed-layout, .is-messages .feed-column, .is-messages .messages-page, .is-messages .messages-layout { height: auto; }
+  .is-messages .messages-heading { display: flex; }
+  .is-messages .chat-friends { display: block; }
+  .is-messages .chat-panel { height: auto; min-height: 55vh; border: 1px solid color-mix(in srgb, var(--line) 80%, white); border-radius: 19px; background: var(--glass); box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), var(--shadow); animation: card-in .5s cubic-bezier(.2,.7,.2,1) both; backdrop-filter: blur(20px) saturate(145%); -webkit-backdrop-filter: blur(20px) saturate(145%); }
+  .is-messages .chat-head { background: transparent; }
+  .is-messages .chat-messages { background: transparent; }
+  .is-messages .chat-compose { background: transparent; }
+  .theme-dark .is-messages .chat-message.mine { background: #284b31; }
+  .is-messages .messages-layout.has-conversation { height: max(280px, calc(100dvh - 190px)); max-height: 760px; }
+  .is-messages .messages-layout.has-conversation .chat-friends { display: none; }
+  .is-messages .messages-layout.has-conversation .chat-panel { height: 100%; min-height: 0; }
+  .is-messages .messages-layout.has-conversation .chat-back { display: grid; }
+}
