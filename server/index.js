@@ -301,7 +301,7 @@ async function handleApi(req, res, url, session) {
     const user = requireUser(session);
     if (!areFriends(user.id, conversationId)) throw fail(403, 'You can message people after you become friends.');
     db.prepare('UPDATE messages SET read_at = ? WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL').run(new Date().toISOString(), conversationId, user.id);
-    const messages = db.prepare(`SELECT m.id, m.sender_id AS senderId, m.recipient_id AS recipientId, m.text, m.created_at AS createdAt, m.read_at AS readAt, u.username
+    const messages = db.prepare(`SELECT m.id, m.sender_id AS senderId, m.recipient_id AS recipientId, m.text, m.created_at AS createdAt, m.read_at AS readAt, m.image_name AS imageName, m.image_type AS imageType, u.username
       FROM messages m JOIN users u ON u.id = m.sender_id WHERE (m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?) ORDER BY m.created_at DESC LIMIT 200`).all(user.id, conversationId, conversationId, user.id).reverse();
     const friend = db.prepare('SELECT id, username, bio, avatar_name FROM users WHERE id = ? AND disabled = 0').get(conversationId);
     if (!friend) throw fail(404, 'That person could not be found.');
@@ -612,4 +612,54 @@ handleApi = async function (req, res, url, session) {
     if (handled) return;
   }
   return alvinceHandleApiBeforeCalls(req, res, url, session);
+};
+
+
+const alvinceHandleApiBeforeChatPictures = handleApi;
+handleApi = async function (req, res, url, session) {
+  const privatePictureConversationId = patternPath(url.pathname, /^\/api\/messages\/([^/]+)\/picture\/[^/]+$/);
+  if (req.method === 'GET' && privatePictureConversationId) {
+    const user = requireUser(session);
+    if (!areFriends(user.id, privatePictureConversationId)) throw fail(403, 'You can view conversation pictures after you become friends.');
+    const pictureRoute = url.pathname.match(/^\/api\/messages\/([^/]+)\/picture\/([^/]+)$/);
+    const pictureId = decodeURIComponent(pictureRoute[2]);
+    const picture = db.prepare(`SELECT image_name AS imageName, image_type AS imageType FROM messages WHERE id = ? AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))`).get(pictureId, user.id, privatePictureConversationId, privatePictureConversationId, user.id);
+    if (!picture?.imageName || !picture.imageType?.startsWith('image/')) throw fail(404, 'That picture could not be found.');
+    const picturePath = resolve(uploadDir, picture.imageName);
+    let pictureFile;
+    try { pictureFile = await stat(picturePath); } catch { throw fail(404, 'That picture could not be found.'); }
+    res.writeHead(200, { 'content-type': picture.imageType, 'content-length': pictureFile.size, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' });
+    createReadStream(picturePath).pipe(res);
+    return;
+  }
+
+  const pictureConversationId = patternPath(url.pathname, /^\/api\/messages\/([^/]+)\/picture$/);
+  if (req.method === 'POST' && pictureConversationId) {
+    validateSameOrigin(req);
+    requireCsrf(session, req);
+    const user = requireUser(session);
+    if (!areFriends(user.id, pictureConversationId)) throw fail(403, 'You can message people after you become friends.');
+    const friend = db.prepare('SELECT id FROM users WHERE id = ? AND disabled = 0').get(pictureConversationId);
+    if (!friend) throw fail(404, 'That person could not be found.');
+    limited(req, 'chat-picture', 30, 60 * 60 * 1000);
+    const { fields, files } = await parseMultipart(req, 13 * 1024 * 1024);
+    const text = (fields.text || '').trim();
+    if (text.length > 2000) throw fail(400, 'Message text can be up to 2000 characters.');
+    const saved = await saveUpload(files.image, 'picture');
+    const id = newId();
+    const createdAt = new Date().toISOString();
+    const messageText = text || 'Shared a picture';
+    try {
+      db.prepare('INSERT INTO messages (id, sender_id, recipient_id, text, created_at, image_name, image_type) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(id, user.id, friend.id, messageText, createdAt, saved.name, saved.mime);
+    } catch (error) {
+      await deleteUpload(saved.name);
+      throw error;
+    }
+    typingSignals.delete(`${user.id}:${friend.id}`);
+    json(res, 201, { message: { id, senderId: user.id, recipientId: friend.id, text: messageText, createdAt, username: user.username, imageName: saved.name, imageType: saved.mime } });
+    return;
+  }
+
+  return alvinceHandleApiBeforeChatPictures(req, res, url, session);
 };
