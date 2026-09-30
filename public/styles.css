@@ -832,3 +832,41 @@ html, body { height: 100%; overflow: hidden; }
   .call-control > span { width: 43px; height: 43px; }
   .call-control small { font-size: 9px; }
 }
+/* Keep the sign-in intro comfortable on narrow phones. */
+@media (max-width: 760px) {
+  .intro-screen {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .intro-shell {
+    box-sizing: border-box;
+    width: min(480px, 100%);
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    flex: 0 0 auto;
+  }
+
+  .intro-story,
+  .intro-access,
+  .intro-form,
+  .intro-form .field {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .intro-footer {
+    width: min(480px, 100%);
+    max-width: 100%;
+    flex: 0 0 auto;
+    padding-inline: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  .intro-screen {
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+}
