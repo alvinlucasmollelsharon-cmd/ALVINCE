@@ -161,3 +161,7 @@ export function removeMediaFile(mediaName) {
   return null;
 }
 
+
+const messageColumns = new Set(db.prepare('PRAGMA table_info(messages)').all().map((column) => column.name));
+if (!messageColumns.has('image_name')) db.exec('ALTER TABLE messages ADD COLUMN image_name TEXT');
+if (!messageColumns.has('image_type')) db.exec('ALTER TABLE messages ADD COLUMN image_type TEXT');
