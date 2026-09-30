@@ -1280,3 +1280,101 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) void
 const signOutBeforeCallCleanup = signOut;
 signOut = async function () { if (state.call) { await sendCallEvent(state.call, 'end'); closeCall(); } return signOutBeforeCallCleanup(); };
 render();
+
+
+function alvinceChatPicturePreviewMarkup() {
+  if (!state.chatImageFile || !state.chatImagePreviewUrl) return '';
+  return '<div class="chat-image-preview"><img src="' + esc(state.chatImagePreviewUrl) + '" alt=""><div class="chat-image-preview-copy"><b>' + esc(state.chatImageFile.name) + '</b><small>Ready to send</small></div><button class="chat-image-preview-remove" type="button" data-chat-image-remove aria-label="Remove picture">×</button></div>';
+}
+
+const alvinceChatMessagesBeforePicturePatch = chatMessagesContent;
+chatMessagesContent = function (messages) {
+  if (!messages.length) return alvinceChatMessagesBeforePicturePatch(messages);
+  return messages.map((message) => {
+    const imageUrl = message.imageName ? '/api/messages/' + encodeURIComponent(state.activeConversationId) + '/picture/' + encodeURIComponent(message.id) : '';
+    const picture = imageUrl ? '<a class="chat-message-picture-link" href="' + esc(imageUrl) + '" target="_blank" rel="noopener"><img class="chat-message-picture" src="' + esc(imageUrl) + '" alt="Picture shared in chat" loading="lazy"></a>' : '';
+    const text = message.imageName && message.text === 'Shared a picture' ? '' : message.text;
+    const caption = text ? '<p>' + esc(text) + '</p>' : '';
+    return '<div class="chat-message ' + (message.senderId === state.user.id ? 'mine' : '') + '">' + picture + caption + '<time>' + esc(ago(message.createdAt)) + '</time></div>';
+  }).join('');
+};
+
+const alvinceMessagesViewBeforePicturePatch = messagesView;
+messagesView = function () {
+  if (state.chatImageFile && state.chatImageConversationId !== state.activeConversationId) {
+    if (state.chatImagePreviewUrl) URL.revokeObjectURL(state.chatImagePreviewUrl);
+    state.chatImageFile = null;
+    state.chatImagePreviewUrl = null;
+    state.chatImageConversationId = null;
+  }
+  const markup = alvinceMessagesViewBeforePicturePatch();
+  if (!state.conversation || !state.activeConversationId) return markup;
+  const compose = '<form class="chat-compose" data-form="message"><input class="chat-image-input" type="file" data-chat-image-input accept="image/jpeg,image/png,image/webp,image/gif,image/avif" aria-label="Choose a picture"><div class="chat-image-preview-slot">' + alvinceChatPicturePreviewMarkup() + '</div><div class="chat-compose-main"><button class="chat-attach" type="button" data-chat-image-select aria-label="Add a picture" title="Add a picture (up to 12 MB)">' + ico('picture') + '</button><input class="chat-compose-text" name="text" maxlength="2000" placeholder="Write a message…" aria-label="Write a message" autocomplete="off"><button class="btn" type="submit" aria-label="Send message">' + ico('send') + '</button></div></form>';
+  return markup.replace(/<form class="chat-compose" data-form="message">[\s\S]*?<\/form>/, compose);
+};
+
+app.addEventListener('click', (event) => {
+  const choosePicture = event.target.closest('[data-chat-image-select]');
+  if (choosePicture) {
+    event.preventDefault();
+    app.querySelector('[data-chat-image-input]')?.click();
+    return;
+  }
+  const removePicture = event.target.closest('[data-chat-image-remove]');
+  if (!removePicture) return;
+  event.preventDefault();
+  if (state.chatImagePreviewUrl) URL.revokeObjectURL(state.chatImagePreviewUrl);
+  state.chatImageFile = null;
+  state.chatImagePreviewUrl = null;
+  state.chatImageConversationId = null;
+  const fileInput = app.querySelector('[data-chat-image-input]');
+  if (fileInput) fileInput.value = '';
+  const preview = app.querySelector('.chat-image-preview-slot');
+  if (preview) preview.innerHTML = '';
+});
+
+app.addEventListener('change', (event) => {
+  if (!event.target.matches('[data-chat-image-input]')) return;
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const allowedType = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(file.type);
+  const allowedExtension = /\.(?:jpe?g|png|webp|gif|avif)$/i.test(file.name);
+  if ((!allowedType && !allowedExtension) || file.size > 12 * 1024 * 1024) {
+    event.target.value = '';
+    notify('Choose a JPG, PNG, WebP, GIF or AVIF picture under 12 MB.', true);
+    return;
+  }
+  if (state.chatImagePreviewUrl) URL.revokeObjectURL(state.chatImagePreviewUrl);
+  state.chatImageFile = file;
+  state.chatImagePreviewUrl = URL.createObjectURL(file);
+  state.chatImageConversationId = state.activeConversationId;
+  const preview = app.querySelector('.chat-image-preview-slot');
+  if (preview) preview.innerHTML = alvinceChatPicturePreviewMarkup();
+});
+
+const alvinceSubmitMessageBeforePicturePatch = submitMessage;
+submitMessage = async function (form) {
+  const conversationId = state.activeConversationId;
+  const imageFile = state.chatImageFile && state.chatImageConversationId === conversationId ? state.chatImageFile : null;
+  if (!imageFile) return alvinceSubmitMessageBeforePicturePatch(form);
+  const text = form.elements.text.value.trim();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  stopTyping(conversationId);
+  try {
+    const body = new FormData();
+    body.set('image', imageFile, imageFile.name);
+    body.set('text', text);
+    await api('/api/messages/' + encodeURIComponent(conversationId) + '/picture', { method: 'POST', body });
+    if (state.chatImagePreviewUrl) URL.revokeObjectURL(state.chatImagePreviewUrl);
+    state.chatImageFile = null;
+    state.chatImagePreviewUrl = null;
+    state.chatImageConversationId = null;
+    form.elements.text.value = '';
+    await loadMessages(conversationId, { push: false });
+  } catch (error) {
+    button.disabled = false;
+    notify(error.message, true);
+  }
+};
+render();
