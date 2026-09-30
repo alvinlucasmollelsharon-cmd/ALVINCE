@@ -1378,3 +1378,23 @@ submitMessage = async function (form) {
   }
 };
 render();
+
+
+// Render shared chat photos even when an older API response omits imageName.
+const alvinceChatMessagesBeforeImageFallback = chatMessagesContent;
+chatMessagesContent = function (messages) {
+  if (!messages.length) return alvinceChatMessagesBeforeImageFallback(messages);
+  return messages.map((message) => {
+    const hasPicture = Boolean(message.imageName || message.image_name || message.imageUrl || message.mediaUrl || message.text === 'Shared a picture');
+    const pictureUrl = message.imageUrl || message.mediaUrl || (hasPicture && message.id && state.activeConversationId
+      ? '/api/messages/' + encodeURIComponent(state.activeConversationId) + '/picture/' + encodeURIComponent(message.id)
+      : '');
+    const picture = pictureUrl
+      ? '<a class="chat-message-picture-link" href="' + esc(pictureUrl) + '" target="_blank" rel="noopener"><img class="chat-message-picture" src="' + esc(pictureUrl) + '" alt="Picture shared in chat" loading="eager"></a>'
+      : '';
+    const text = hasPicture && message.text === 'Shared a picture' ? '' : message.text || '';
+    const caption = text ? '<p>' + esc(text) + '</p>' : '';
+    return '<div class="chat-message ' + (message.senderId === state.user.id ? 'mine' : '') + '">' + picture + caption + '<time>' + esc(ago(message.createdAt)) + '</time></div>';
+  }).join('');
+};
+render();
